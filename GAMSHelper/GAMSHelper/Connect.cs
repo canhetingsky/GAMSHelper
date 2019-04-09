@@ -4,7 +4,7 @@
 // Created          : 03-18-2019
 //
 // Last Modified By : Administrator
-// Last Modified On : 03-19-2019
+// Last Modified On : 03-28-2019
 // ***********************************************************************
 // <copyright file="Connect.cs" company="Microsoft">
 //     Copyright © Microsoft 2019
@@ -27,14 +27,57 @@ namespace Connect
     public class SQLConnect
     {
         /// <summary>
+        /// The server
+        /// </summary>
+        private string server = null;
+        /// <summary>
+        /// The database
+        /// </summary>
+        private string database = null;
+        /// <summary>
+        /// The user
+        /// </summary>
+        private string user = null;
+        /// <summary>
+        /// The password
+        /// </summary>
+        private string pwd = null;
+        private int model_n = 0;
+
+        public int Model_N
+        {
+            get { return model_n; }
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="SQLConnect"/> class.
+        /// </summary>
+        /// <param name="str_server">The str_server.</param>
+        /// <param name="str_database">The str_database.</param>
+        /// <param name="str_user">The str_user.</param>
+        /// <param name="str_pwd">The STR_PWD.</param>
+        public SQLConnect(string str_server, string str_database, string str_user, string str_pwd)
+        {
+            server = str_server;
+            database = str_database;
+            user = str_user;
+            pwd = str_pwd;
+        }
+
+        /// <summary>
+        /// Finalizes an instance of the <see cref="SQLConnect"/> class.
+        /// </summary>
+        ~SQLConnect() { }
+
+        /// <summary>
         /// Gets the data from SQL.
         /// </summary>
-        /// <param name="server">The server.</param>
-        /// <param name="database">The database.</param>
-        /// <param name="user">The user.</param>
-        /// <param name="pwd">The password.</param>
+        /// <param name="command1">The command1.</param>
+        /// <param name="command2">The command2.</param>
+        /// <param name="command3">The command3.</param>
+        /// <param name="command4">The command4.</param>
         /// <returns>List&lt;System.String&gt;[].</returns>
-        public List<string>[] GetDataFromSQL(string server,string database,string user,string pwd)
+        public List<string>[] GetDataFromSQL(string command1, string command2, string command3, string command4)
         {
             List<string> Pi1 = new List<string>();
             List<string> Pi2 = new List<string>();
@@ -49,160 +92,77 @@ namespace Connect
 
             SqlConnection myconnect;
             //string conn = "server=DESKTOP-36C9L6T;database=lushushu;user=sa;pwd=123";
-            string conn = "server=" +server+";database="+database+";user="+user+";pwd="+pwd+"";
+            string conn = "server=" +server+";database="+database+";user="+user+";pwd="+pwd;
             myconnect = new SqlConnection(conn);
             myconnect.Open();
 
-            //1-1
+            //1
+            int i1 = 0;
             try
             {
-                SqlCommand mycomm1=new SqlCommand("select PERSON_ID from IMS_PATROL_PERSON_ON_DUTY;", myconnect);
+                SqlCommand mycomm1 = new SqlCommand(command1, myconnect);
                 SqlDataReader rd1 = mycomm1.ExecuteReader();
-                while(rd1.Read())
+                while (rd1.Read())
                 {
-                    int i = rd1.FieldCount;
-                    Pi1.Add(rd1.GetValue(0).ToString());
+                    i1++;
+                    Pi1.Add(rd1["PERSON_ID"].ToString());
+                    Pi2.Add(rd1["SKILL_LEVEL"].ToString());
                 }
                 rd1.Close();
                 //myconnect.Close();
             }
-            catch 
-            {}
-            //myconnect.Open();
-            //1-2
+            catch
+            { }
+
+            //2
+            int i2 = 0;
             try
             {
-                SqlCommand mycomm2 = new SqlCommand("select SKILL_LEVEL from IMS_PATROL_PERSON_ON_DUTY;", myconnect);
+                SqlCommand mycomm2 = new SqlCommand(command2, myconnect);
                 SqlDataReader rd2 = mycomm2.ExecuteReader();
                 while (rd2.Read())
                 {
-                    int i = rd2.FieldCount;
-                    Pi2.Add(rd2.GetValue(0).ToString());
+                    i2++;
+                    TLi1.Add(rd2["TASK_ID"].ToString());
+                    TLi2.Add(rd2["SKILL_LEVEL"].ToString());
                 }
                 rd2.Close();
                 //myconnect.Close();
             }
             catch
             { }
-            //myconnect.Open();
-            //2-1
+
+            //3
             try
             {
-                SqlCommand mycomm3 = new SqlCommand("select TASK_ID from IMS_PATROL_TASK_SKILL;", myconnect);
+                SqlCommand mycomm3 = new SqlCommand(command3, myconnect);
                 SqlDataReader rd3 = mycomm3.ExecuteReader();
                 while (rd3.Read())
                 {
                     int i = rd3.FieldCount;
-                    TLi1.Add(rd3.GetValue(0).ToString());
+                    Tij1.Add(rd3["PERSON_ID"].ToString());
+                    Tij2.Add(rd3["TASK_ID"].ToString());
+                    Tij3.Add(rd3["SPEND_TIME"].ToString());
                 }
                 rd3.Close();
                 //myconnect.Close();
             }
             catch
             { }
-            //myconnect.Open();
-            //2-2
+
+            //4
             try
             {
-                SqlCommand mycomm4 = new SqlCommand("select SKILL_LEVEL from IMS_PATROL_TASK_SKILL;", myconnect);
+                SqlCommand mycomm4 = new SqlCommand(command4, myconnect);
                 SqlDataReader rd4 = mycomm4.ExecuteReader();
                 while (rd4.Read())
                 {
                     int i = rd4.FieldCount;
-                    TLi2.Add(rd4.GetValue(0).ToString());
+                    Tjj1.Add(rd4["FROM_TASK_ID"].ToString());
+                    Tjj2.Add(rd4["TO_TASK_ID"].ToString());
+                    Tjj3.Add(rd4["SPEND_TIME"].ToString());
                 }
                 rd4.Close();
-                //myconnect.Close();
-            }
-            catch
-            { }
-            //myconnect.Open();
-            //3-1
-            try
-            {
-                SqlCommand mycomm5 = new SqlCommand("select PERSON_ID from IMS_PATROL_PERSON_TASK_TIME;", myconnect);
-                SqlDataReader rd5 = mycomm5.ExecuteReader();
-                while (rd5.Read())
-                {
-                    int i = rd5.FieldCount;
-                    Tij1.Add(rd5.GetValue(0).ToString());
-                }
-                rd5.Close();
-                //myconnect.Close();
-            }
-            catch
-            { }
-            //3-2
-            try
-            {
-                SqlCommand mycomm6 = new SqlCommand("select TASK_ID from IMS_PATROL_PERSON_TASK_TIME;", myconnect);
-                SqlDataReader rd6 = mycomm6.ExecuteReader();
-                while (rd6.Read())
-                {
-                    int i = rd6.FieldCount;
-                    Tij2.Add(rd6.GetValue(0).ToString());
-                }
-                rd6.Close();
-                //myconnect.Close();
-            }
-            catch
-            { }
-            //3-3
-            try
-            {
-                SqlCommand mycomm7 = new SqlCommand("select SPEND_TIME from IMS_PATROL_PERSON_TASK_TIME;", myconnect);
-                SqlDataReader rd7 = mycomm7.ExecuteReader();
-                while (rd7.Read())
-                {
-                    int i = rd7.FieldCount;
-                    Tij3.Add(rd7.GetValue(0).ToString());
-                }
-                rd7.Close();
-                //myconnect.Close();
-            }
-            catch
-            { }
-            //4-1
-            try
-            {
-                SqlCommand mycomm8 = new SqlCommand("select FROM_TASK_ID from IMS_PATROL_TASK_SPEND_TIME;", myconnect);
-                SqlDataReader rd8 = mycomm8.ExecuteReader();
-                while (rd8.Read())
-                {
-                    int i = rd8.FieldCount;
-                    Tjj1.Add(rd8.GetValue(0).ToString());
-                }
-                rd8.Close();
-                //myconnect.Close();
-            }
-            catch
-            { }
-            //4-2
-            try
-            {
-                SqlCommand mycomm9 = new SqlCommand("select TO_TASK_ID from IMS_PATROL_TASK_SPEND_TIME;", myconnect);
-                SqlDataReader rd9 = mycomm9.ExecuteReader();
-                while (rd9.Read())
-                {
-                    int i = rd9.FieldCount;
-                    Tjj2.Add(rd9.GetValue(0).ToString());
-                }
-                rd9.Close();
-                //myconnect.Close();
-            }
-            catch
-            { }
-            //4-3
-            try
-            {
-                SqlCommand mycomm10 = new SqlCommand("select SPEND_TIME from IMS_PATROL_TASK_SPEND_TIME;", myconnect);
-                SqlDataReader rd10 = mycomm10.ExecuteReader();
-                while (rd10.Read())
-                {
-                    int i = rd10.FieldCount;
-                    Tjj3.Add(rd10.GetValue(0).ToString());
-                }
-                rd10.Close();
                 myconnect.Close();
             }
             catch
@@ -221,19 +181,25 @@ namespace Connect
             listData[8] = Tjj2;
             listData[9] = Tjj3;
 
+            //n=((任务数-1)/人数+1)*2
+            if ((i2 - 1) % i1 == 0)
+            {
+                model_n = ((i2 - 1) / i1 + 1) * 2;
+            }
+            else
+            {
+                model_n = ((i2 - 1) / i1 + 2) * 2;
+            }
+            
             return listData;
         }
 
         /// <summary>
         /// Sends the data to SQL.
         /// </summary>
-        /// <param name="server">The server.</param>
-        /// <param name="database">The database.</param>
-        /// <param name="user">The user.</param>
-        /// <param name="pwd">The password.</param>
         /// <param name="resultData">The result data.</param>
         /// <returns>System.String.</returns>
-        public string SendDataToSQL(string server,string database,string user,string pwd, List<string>[] resultData)
+        public string SendDataToSQL(List<string>[] resultData)
         {
             SqlConnection myconnect;
             string conn = "server=" +server+";database="+database+";user="+user+";pwd="+pwd+"";
@@ -244,6 +210,8 @@ namespace Connect
             string temporarytable = "GAMSresult";
             string tableName = "IMS_PATROL_TASK_TIME";
             int n = 0;
+
+            //中间过程数据库
             try
             {
                 //delete table
@@ -270,8 +238,7 @@ namespace Connect
                     SqlCommand mycomm3 = new SqlCommand("insert into "+ temporarytable + "(Pid ,Tid1,id,number,nowdaystime) values('" + resultData[0][i] + "','" + resultData[1][i] + "','" + resultData[2][i] + "','" + Convert.ToInt32(resultData[3][i]) + "','"+ time.ToString() + "');", myconnect);
                     mycomm3.ExecuteNonQuery();
                 }
-
-
+                
                 for (int i = 4; i < resultData[4].Count; i++)
                 {
                     DateTime startWorkTime = new DateTime(currentTime.Year, currentTime.Month, currentTime.Day, 8, 0, 0);
@@ -288,21 +255,19 @@ namespace Connect
             {
                 //throw ex;
             }
-            List<string>[] listTask = GetTaskTimeFromSQL(server, database, user, pwd, temporarytable);
-            SendTaskTimeToSQL(server, database, user, pwd, tableName, listTask);
+
+            List<string>[] listTask = GetTaskTimeFromSQL(temporarytable);
+            SendTaskTimeToSQL(tableName, listTask);
+
             return tableName;
         }
 
         /// <summary>
         /// Gets the task time from SQL.
         /// </summary>
-        /// <param name="server">The server.</param>
-        /// <param name="database">The database.</param>
-        /// <param name="user">The user.</param>
-        /// <param name="pwd">The password.</param>
         /// <param name="tableName">Name of the table.</param>
         /// <returns>List&lt;System.String&gt;[].</returns>
-        private List<string>[] GetTaskTimeFromSQL(string server, string database, string user, string pwd, string tableName)
+        private List<string>[] GetTaskTimeFromSQL(string tableName)
         {
             List<string>[] listData = new List<string>[6];
 
@@ -397,13 +362,9 @@ namespace Connect
         /// <summary>
         /// Sends the task time to SQL.
         /// </summary>
-        /// <param name="server">The server.</param>
-        /// <param name="database">The database.</param>
-        /// <param name="user">The user.</param>
-        /// <param name="pwd">The password.</param>
         /// <param name="tableName">Name of the table.</param>
         /// <param name="listTask">The list task.</param>
-        private void SendTaskTimeToSQL(string server, string database, string user, string pwd, string tableName, List<string>[] listTask)
+        private void SendTaskTimeToSQL(string tableName, List<string>[] listTask)
         {
             SqlConnection myconnect;
             string conn = "server=" + server + ";database=" + database + ";user=" + user + ";pwd=" + pwd + "";

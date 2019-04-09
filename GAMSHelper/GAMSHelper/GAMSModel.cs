@@ -18,7 +18,6 @@ using GAMS;
 //using NPOI.HSSF.UserModel;
 //using NPOI.XSSF.UserModel;
 
-
 /// <summary>
 /// The GAMSHelper namespace.
 /// </summary>
@@ -33,6 +32,13 @@ namespace GAMSHelper
         /// The workspace path
         /// </summary>
         private string workspacePath = null;
+        public int model_n = 0;
+        public int Model_N
+        {
+            get { return model_n; }
+            set { model_n = value; }
+        }
+
         /// <summary>
         /// Initializes a new instance of the <see cref="GAMSModel"/> class.
         /// </summary>
@@ -89,7 +95,7 @@ namespace GAMSHelper
                 }
 			}
 
-            GAMSJob t = ws.AddJobFromString(GetModelText());
+            GAMSJob t = ws.AddJobFromString(GetModelText(model_n));
             using (GAMSOptions opt = ws.AddOptions())
             {
                 opt.Defines.Add("gdxincname", db.Name);
@@ -254,14 +260,34 @@ namespace GAMSHelper
         /// Gets the model text.
         /// </summary>
         /// <returns>System.String.</returns>
-        private string GetModelText()
+        private string GetModelText(int n)
         {
+            string n0 = "/0 * " + n + "/";
+            string n1 = "/";
+            string n2 = "/";
+            for (int i = 0; i < n; i++)
+            {
+                if (i%2==1)
+                {
+                    n1 = n1 + i + ",";
+                }
+                else if (i % 2 == 0)
+                {
+                    n2 = n2 + i + ",";
+                }
+            }
+            n1 += "/";
+            n2 += "/";
+
+            n1 = n1.Replace(",/", "/");
+            n2 = n2.Replace(",/", "/");
+
             string model = @"
 
 Sets
-             n         时间点         /0 * 10/
-             n1(n)     奇数           /1,3,5,7,9/
-             n2(n)     偶数           /0,2,4,6,8,10/     
+             n         时间点         " + n0 + @"
+             n1(n)     奇数           " + n1 + @"
+             n2(n)     偶数           " + n2 + @"     
              i         所有维修员元素点 
              j         所有任务元素点
 
@@ -390,7 +416,7 @@ Model test /all/;
 *设置初值和终值
 XS.fx(i, j, '0')$(ord(j) eq 1)=1 ;
 XS.fx(i, j, n1)=0;
-XS.fx(i, j, '10')$(ord(j) eq 1)=1 ;
+XS.fx(i, j, n)$(ord(j) eq 1 and ord(n) eq Nmax-1)=1 ;
 X.fx(i,j,j,n)=0;
 X.fx(i,j,jp,n2)=0;
 
