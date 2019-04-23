@@ -13,6 +13,7 @@
 // ***********************************************************************
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using GAMS;
 //using NPOI.SS.UserModel;
 //using NPOI.HSSF.UserModel;
@@ -32,7 +33,8 @@ namespace GAMSHelper
         /// The workspace path
         /// </summary>
         private string workspacePath = null;
-        public int model_n = 0;
+        private int model_n = 0;
+
         public int Model_N
         {
             get { return model_n; }
@@ -62,6 +64,7 @@ namespace GAMSHelper
         {
             int sheetNumber = 4;
 
+            //一下参数来源于GAMS模型
             string[] setsTemplate = new string[2] { "i", "j" };
             string[] setsName = new string[2] { "所有维修员元素点", "所有任务元素点" };
             string[] parametersTemplate = new string[4] { "PL", "TL", "Tij", "Tjj" };
@@ -99,7 +102,7 @@ namespace GAMSHelper
             using (GAMSOptions opt = ws.AddOptions())
             {
                 opt.Defines.Add("gdxincname", db.Name);
-                opt.AllModelTypes = "xpress";
+                opt.AllModelTypes = "cplex";
                 t.Run(opt, db);
             }
             List<string>[] resultData = GetResultData(t);
@@ -265,7 +268,7 @@ namespace GAMSHelper
             string n0 = "/0 * " + n + "/";
             string n1 = "/";
             string n2 = "/";
-            for (int i = 0; i < n; i++)
+            for (int i = 0; i <= n; i++)
             {
                 if (i%2==1)
                 {
@@ -287,7 +290,7 @@ namespace GAMSHelper
 Sets
              n         时间点         " + n0 + @"
              n1(n)     奇数           " + n1 + @"
-             n2(n)     偶数           " + n2 + @"     
+             n2(n)     偶数           " + n2 + @"
              i         所有维修员元素点 
              j         所有任务元素点
 
@@ -360,7 +363,7 @@ cons_BX_3(i,j,jp,n)
 cons_BXS_1(i,j,n)
 cons_BXS_2(i,j,n)
 cons_BXS_3(i,j,n)
-cons_19(j,n)
+cons_19(i)
 obj;
 
 *（1）
@@ -405,8 +408,8 @@ cons_BX_3(i,j,jp,n).. BX(i,j,jp,n)=g=0;
 cons_BXS_1(i,j,n).. BXS(i,j,n)=l=XS(i,j,n);
 cons_BXS_2(i,j,n).. BXS(i,j,n)=l=1-XS(i,j,n);
 cons_BXS_3(i,j,n).. BXS(i,j,n)=g=0;
-cons_19(j,n)$(ord(j) ne 1).. sum(i,XS(i,j,n))=l=1;
-
+*cons_19(j,n)$(ord(j) ne 1).. sum(i,XS(i,j,n))=l=1;
+cons_19(i)..      sum(( j, n2)$(ord(j) ne 1),Tij(i,j)* XS(i, j, n2))+sum((j, jp, n1), Tjj(j,jp)*X(i, j, jp, n1))=l=480;
 
 obj.. cost =e= sum((i, j, n2),Tij(i,j)* XS(i, j, n2))+sum((i, j, jp, n1), Tjj(j,jp)*X(i, j, jp, n1));
 *obj.. cost =e= sum((i, j, n2)$(ord(j) ne 1), Tf(i,j,n2)-Ts(i,j,n2))+sum((i, j, jp, n1), TTf(i,j,jp,n1)-TTs(i,j,jp,n1));
@@ -422,7 +425,8 @@ X.fx(i,j,jp,n2)=0;
 
 
 option limrow=1000;
-option threads=40;
+option threads=2;
+option decimals=0; 
 option mip=cplex;
 option reslim=20000;
 

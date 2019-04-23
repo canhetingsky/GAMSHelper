@@ -19,7 +19,7 @@ using System.Diagnostics;
 /// <summary>
 /// The Connect namespace.
 /// </summary>
-namespace Connect
+namespace GAMSHelper
 {
     /// <summary>
     /// Class SQLConnect.
@@ -42,7 +42,9 @@ namespace Connect
         /// The password
         /// </summary>
         private string pwd = null;
-        private int model_n = 0;
+        private int model_n = 0;    //模型中的n（n1、n2）值
+
+        public Patrol patrol = new Patrol();
 
         public int Model_N
         {
@@ -90,47 +92,55 @@ namespace Connect
             List<string> Tjj2 = new List<string>();
             List<string> Tjj3 = new List<string>();
 
-            SqlConnection myconnect;
             //string conn = "server=DESKTOP-36C9L6T;database=lushushu;user=sa;pwd=123";
             string conn = "server=" +server+";database="+database+";user="+user+";pwd="+pwd;
+            SqlConnection myconnect;
             myconnect = new SqlConnection(conn);
             myconnect.Open();
 
             //1
-            int i1 = 0;
             try
             {
                 SqlCommand mycomm1 = new SqlCommand(command1, myconnect);
                 SqlDataReader rd1 = mycomm1.ExecuteReader();
                 while (rd1.Read())
                 {
-                    i1++;
-                    Pi1.Add(rd1["PERSON_ID"].ToString());
-                    Pi2.Add(rd1["SKILL_LEVEL"].ToString());
+                    string personId = rd1["PERSON_ID"].ToString();
+                    string skillLevel = rd1["SKILL_LEVEL"].ToString();
+                    patrol.person_id.Add(personId);
+                    patrol.p_skill_level.Add(skillLevel);
+                    Pi1.Add(personId);
+                    Pi2.Add(skillLevel);
                 }
                 rd1.Close();
                 //myconnect.Close();
             }
-            catch
-            { }
+            catch(Exception ex)
+            {
+                throw ex;
+            }
 
             //2
-            int i2 = 0;
             try
             {
                 SqlCommand mycomm2 = new SqlCommand(command2, myconnect);
                 SqlDataReader rd2 = mycomm2.ExecuteReader();
                 while (rd2.Read())
                 {
-                    i2++;
-                    TLi1.Add(rd2["TASK_ID"].ToString());
-                    TLi2.Add(rd2["SKILL_LEVEL"].ToString());
+                    string taskId = rd2["TASK_ID"].ToString();
+                    string skillLevel = rd2["SKILL_LEVEL"].ToString();
+                    patrol.task_id.Add(taskId);
+                    patrol.t_skill_level.Add(skillLevel);
+                    TLi1.Add(taskId);
+                    TLi2.Add(skillLevel);
                 }
                 rd2.Close();
                 //myconnect.Close();
             }
-            catch
-            { }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
 
             //3
             try
@@ -147,8 +157,10 @@ namespace Connect
                 rd3.Close();
                 //myconnect.Close();
             }
-            catch
-            { }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
 
             //4
             try
@@ -165,8 +177,10 @@ namespace Connect
                 rd4.Close();
                 myconnect.Close();
             }
-            catch
-            { }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
 
             List<string>[] listData = new List<string>[10];
 
@@ -181,6 +195,8 @@ namespace Connect
             listData[8] = Tjj2;
             listData[9] = Tjj3;
 
+            int i1 = patrol.person_id.Count;  //人数
+            int i2 = patrol.task_id.Count;    //任务数
             //n=((任务数-1)/人数+1)*2
             if ((i2 - 1) % i1 == 0)
             {
@@ -224,36 +240,40 @@ namespace Connect
 
                 try
                 {
-                    SqlCommand mycomm2 = new SqlCommand("CREATE TABLE " + temporarytable + " (Pid varchar(10),Tid1 varchar(10) ,Tid2 varchar(10) ,id varchar(10) ,number bigint ,nowdaystime datetime)", myconnect);
+                    SqlCommand mycomm2 = new SqlCommand("CREATE TABLE " + temporarytable + " (Pid varchar(32),Tid1 varchar(32) ,Tid2 varchar(32) ,id varchar(10) ,number bigint ,nowdaystime datetime)", myconnect);
                     n = mycomm2.ExecuteNonQuery();
                 }
                 catch { }
 
                 for (int i = 0; i < resultData[0].Count; i++)
                 {
-                    DateTime startWorkTime = new DateTime(currentTime.Year, currentTime.Month, currentTime.Day, 8, 0, 0);
-                    DateTime time = startWorkTime.AddMinutes(Convert.ToInt32(resultData[3][i]) - 1);
-                    //Debug.WriteLine(time);
+                    double d_level = Convert.ToDouble(resultData[3][i]);
+                    int level = Convert.ToInt32(d_level);
 
-                    SqlCommand mycomm3 = new SqlCommand("insert into "+ temporarytable + "(Pid ,Tid1,id,number,nowdaystime) values('" + resultData[0][i] + "','" + resultData[1][i] + "','" + resultData[2][i] + "','" + Convert.ToInt32(resultData[3][i]) + "','"+ time.ToString() + "');", myconnect);
+                    DateTime startWorkTime = new DateTime(currentTime.Year, currentTime.Month, currentTime.Day, 8, 0, 0);
+                    DateTime time = startWorkTime.AddMinutes(level - 1);
+
+                    SqlCommand mycomm3 = new SqlCommand("insert into " + temporarytable + "(Pid ,Tid1,id,number,nowdaystime) values('" + resultData[0][i] + "','" + resultData[1][i] + "','" + resultData[2][i] + "','" + level.ToString() + "','" + time.ToString() + "');", myconnect);
                     mycomm3.ExecuteNonQuery();
                 }
                 
                 for (int i = 4; i < resultData[4].Count; i++)
                 {
-                    DateTime startWorkTime = new DateTime(currentTime.Year, currentTime.Month, currentTime.Day, 8, 0, 0);
-                    DateTime time = startWorkTime.AddMinutes(Convert.ToInt32(resultData[8][i]) - 1);
-                    //Debug.WriteLine(time);
+                    double d_level = Convert.ToDouble(resultData[8][i]);
+                    int level = Convert.ToInt32(d_level);
 
-                    SqlCommand mycomm4 = new SqlCommand("insert into " + temporarytable + "(Pid ,Tid1,Tid2,id,number,nowdaystime) values('" + resultData[4][i] + "','" + resultData[5][i] + "','" + resultData[6][i] + "','" + resultData[7][i] + "','" + Convert.ToInt32(resultData[8][i]) + "','" + time + "');", myconnect);
+                    DateTime startWorkTime = new DateTime(currentTime.Year, currentTime.Month, currentTime.Day, 8, 0, 0);
+                    DateTime time = startWorkTime.AddMinutes(level - 1);
+
+                    SqlCommand mycomm4 = new SqlCommand("insert into " + temporarytable + "(Pid ,Tid1,Tid2,id,number,nowdaystime) values('" + resultData[4][i] + "','" + resultData[5][i] + "','" + resultData[6][i] + "','" + resultData[7][i] + "','" + level.ToString() + "','" + time.ToString() + "');", myconnect);
                     mycomm4.ExecuteNonQuery();
                 }
-
+               
                 myconnect.Close();
             }
             catch (Exception ex)
             {
-                //throw ex;
+                throw ex;
             }
 
             List<string>[] listTask = GetTaskTimeFromSQL(temporarytable);
@@ -267,7 +287,7 @@ namespace Connect
         /// </summary>
         /// <param name="tableName">Name of the table.</param>
         /// <returns>List&lt;System.String&gt;[].</returns>
-        private List<string>[] GetTaskTimeFromSQL(string tableName)
+        public List<string>[] GetTaskTimeFromSQL(string tableName)
         {
             List<string>[] listData = new List<string>[6];
 
@@ -283,12 +303,14 @@ namespace Connect
             myconnect = new SqlConnection(conn);
             myconnect.Open();
 
-            string[] pid = new string[5];
+            int personNum = patrol.person_id.Count;
+            string[] pid = new string[personNum];
 
-            for (int i = 0; i < 5; i++)
+            for (int i = 0; i < personNum; i++)
             {
                 //数据库查询
-                pid[i] = "XJ00" + (i+1).ToString("00");
+                //pid[i] = "XJ00" + (i+1).ToString("00");
+                pid[i] = patrol.person_id[i];
 
                 SqlCommand mycomm = new SqlCommand("SELECT COUNT(*) AS pcount FROM " + tableName + " WHERE number!=0 AND Pid='" + pid[i] + "';", myconnect);
                 SqlDataReader rd = mycomm.ExecuteReader();
@@ -364,7 +386,7 @@ namespace Connect
         /// </summary>
         /// <param name="tableName">Name of the table.</param>
         /// <param name="listTask">The list task.</param>
-        private void SendTaskTimeToSQL(string tableName, List<string>[] listTask)
+        public void SendTaskTimeToSQL(string tableName, List<string>[] listTask)
         {
             SqlConnection myconnect;
             string conn = "server=" + server + ";database=" + database + ";user=" + user + ";pwd=" + pwd + "";
