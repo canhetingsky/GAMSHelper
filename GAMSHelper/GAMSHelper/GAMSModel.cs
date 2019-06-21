@@ -64,7 +64,7 @@ namespace GAMSHelper
         {
             int sheetNumber = 4;
 
-            //一下参数来源于GAMS模型
+            //以下参数来源于GAMS模型
             string[] setsTemplate = new string[2] { "i", "j" };
             string[] setsName = new string[2] { "所有维修员元素点", "所有任务元素点" };
             string[] parametersTemplate = new string[4] { "PL", "TL", "Tij", "Tjj" };

@@ -72,7 +72,7 @@ namespace GAMSHelper
         ~SQLConnect() { }
 
         /// <summary>
-        /// Gets the data from SQL.
+        /// Gets the GAMS Model's data from SQL.
         /// </summary>
         /// <param name="command1">The command1.</param>
         /// <param name="command2">The command2.</param>
@@ -210,6 +210,71 @@ namespace GAMSHelper
             return listData;
         }
 
+        public List<string>[] GetPersonPositionIDFromSQL(string command)
+        {
+            List<string> personID = new List<string>();
+            List<string> positionID = new List<string>();
+
+            string conn = "server=" + server + ";database=" + database + ";user=" + user + ";pwd=" + pwd;
+            SqlConnection myconnect;
+            myconnect = new SqlConnection(conn);
+            myconnect.Open();
+
+            try
+            {
+                SqlCommand mycomm = new SqlCommand(command, myconnect);
+                SqlDataReader rd = mycomm.ExecuteReader();
+                while (rd.Read())
+                {
+                    personID.Add(rd["PERSON_ID"].ToString());
+                    positionID.Add(rd["POSITION_ID"].ToString());
+                }
+                rd.Close();
+                myconnect.Close();
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+            List<string>[] listData = new List<string>[2];
+            listData[0] = personID;
+            listData[1] = positionID;
+
+            return listData;
+        }
+
+        public List<int> GetPositionSpendTimeFromSQL(string tableName, List<string> startPosition, string endPosition)
+        {
+            List<int> spendTime = new List<int>();
+
+            string conn = "server=" + server + ";database=" + database + ";user=" + user + ";pwd=" + pwd;
+            SqlConnection myconnect;
+            myconnect = new SqlConnection(conn);
+            myconnect.Open();
+
+            try
+            {
+                for (int i = 0; i < startPosition.Count; i++)
+                {
+                    string command = "SELECT * FROM " + tableName + " WHERE FROM_POSITION_ID='" + startPosition[i] + "' AND TO_POSITION_ID='" + endPosition + "';";
+                    SqlCommand mycomm = new SqlCommand(command, myconnect);
+                    SqlDataReader rd = mycomm.ExecuteReader();
+                    while (rd.Read())
+                    {
+                        spendTime.Add(Convert.ToInt32(rd["SPEND_TIME"]));
+                    }
+                    rd.Close();
+                }
+                myconnect.Close();
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+
+            return spendTime;
+        }
+
         /// <summary>
         /// Sends the data to SQL.
         /// </summary>
@@ -287,7 +352,7 @@ namespace GAMSHelper
         /// </summary>
         /// <param name="tableName">Name of the table.</param>
         /// <returns>List&lt;System.String&gt;[].</returns>
-        public List<string>[] GetTaskTimeFromSQL(string tableName)
+        private List<string>[] GetTaskTimeFromSQL(string tableName)
         {
             List<string>[] listData = new List<string>[6];
 
@@ -381,12 +446,13 @@ namespace GAMSHelper
 
             return listData;
         }
+
         /// <summary>
         /// Sends the task time to SQL.
         /// </summary>
         /// <param name="tableName">Name of the table.</param>
         /// <param name="listTask">The list task.</param>
-        public void SendTaskTimeToSQL(string tableName, List<string>[] listTask)
+        private void SendTaskTimeToSQL(string tableName, List<string>[] listTask)
         {
             SqlConnection myconnect;
             string conn = "server=" + server + ";database=" + database + ";user=" + user + ";pwd=" + pwd + "";
