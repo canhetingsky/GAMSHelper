@@ -1,7 +1,7 @@
-﻿using System;
-using System.IO;
+﻿using GAMSHelper;
+using System;
 using System.Collections.Generic;
-using GAMSHelper;
+using System.IO;
 
 namespace GAMSDemo
 {
@@ -11,29 +11,33 @@ namespace GAMSDemo
         {
             DateTime beforeDT = DateTime.Now;
 
-            //数据库查询语句
-            string command1;
-            string command2;
-            string command3;
-            string command4;
-
-            string command = null;
-
             //数据库相关信息
             string server;  //数据库地址
             string database;    //数据库名称
             string user;        //数据库用户名
             string pwd;         //数据库密码
-            string debug = "";  //是否启用日志记录，当debug = "LOG"，启用日志记录
+
+            //数据库查询语句
+            string command1 = null;
+            string command2 = null;
+            string command3 = null;
+            string command4 = null;
+
+            string debug = null;  //是否启用日志记录，当debug = "LOG"，启用日志记录
+
+            string command5 = null;  //查询技能高于某个水平的人员位置的SQL语句
+            string command6 = null;  //查询人员位置的SQL语句
 
             //紧急任务相关信息
-            string taskID = "TS0015";
-            string t_positionID = "";
-            int skillLevel = 2;
+            string taskID = null;
+            string t_positionID = null;
+            //int skillLevel = 0;
+            string position_tableName = ""; //井之间距离的表名
+
             List<string> personID = new List<string>();
             List<string> p_positionID = new List<string>();
             List<int> p_spendTime = new List<int>();
-            string choosePersonID = "";
+            string choosePersonID = null;
 
             #region 输入参数解析
             if (args.Length == 0)
@@ -47,6 +51,10 @@ namespace GAMSDemo
                 command2 = "select * from IMS_PATROL_TASK_SKILL;";
                 command3 = "select * from IMS_PATROL_PERSON_TASK_TIME;";
                 command4 = "select * from IMS_PATROL_TASK_SPEND_TIME;";
+
+                command5 = "select PERSON_ID from IMS_PATROL_PERSON_ON_DUTY where SKILL_LEVEL<=2;";
+                taskID = "TS0015";
+                t_positionID = "";
             }
             else if (args.Length == 8)
             {
@@ -67,11 +75,22 @@ namespace GAMSDemo
                 user = args[2];
                 pwd = args[3];
 
-                command1 = args[4];
-                command2 = args[5];
-                command3 = args[6];
-                command4 = args[7];
-                debug    = args[8];
+                if (args[8] == "LOG")
+                {
+                    command1 = args[4];
+                    command2 = args[5];
+                    command3 = args[6];
+                    command4 = args[7];
+                    debug = args[8];
+                }
+                else
+                {
+                    command5 = args[4];
+                    command6 = args[5];
+                    position_tableName = args[6];
+                    taskID = args[7];
+                    t_positionID = args[8];
+                }
             }
             else
             {
@@ -81,24 +100,14 @@ namespace GAMSDemo
             #endregion
 
 
-            if (true)
+            if ((debug == null) && (args.Length == 9))
             {
                 SQLConnect scon = new SQLConnect(server, database, user, pwd);
-                List<string>[] listData = scon.GetDataFromSQL(command1, command2, command3, command4);
-
-                //得到可以做此任务的人员ID
-                for (int i = 0; i < listData[1].Count; i++)
-                {
-                    int level = Convert.ToInt32(listData[1][i]);
-                    if (level <= skillLevel)
-                    {
-                        personID.Add(listData[0][i]);
-                    }
-                }
+                personID = scon.GetHighLevelPersonIDFromSQL(command5);  //得到可以做此任务的人员ID
 
                 //TODO:get person position id
                 //...
-                List<string>[] listPersonPosition = scon.GetPersonPositionIDFromSQL(command);
+                List<string>[] listPersonPosition = scon.GetPersonPositionIDFromSQL(command6);
                 for (int i = 0; i < personID.Count; i++)
                 {
                     for (int j = 0; j < listPersonPosition[0].Count; j++)
@@ -114,16 +123,15 @@ namespace GAMSDemo
 
                 //TODO:get person spend time from person position id to task position id
                 //...
-                string position_tableName = "";
                 p_spendTime = scon.GetPositionSpendTimeFromSQL(position_tableName, p_positionID, t_positionID);
 
-                
-                //找到到达任务点最快人得ID
+
+                //找到到达任务点最快人的ID
                 int minTime = p_spendTime[0];
                 int index = 0;
                 for (int i = 0; i < p_spendTime.Count; i++)
                 {
-                    
+
                     if (p_spendTime[i] < minTime)
                     {
                         minTime = p_spendTime[i];
@@ -132,6 +140,53 @@ namespace GAMSDemo
                 }
                 choosePersonID = personID[index];
 
+                List<string>[] personTaskList = scon.GetPersonTaskListFromSQL(choosePersonID);
+                int t_index = 0;
+                string taskStartTime = null;
+                for (int i = 0; i < personTaskList[0].Count; i++)
+                {
+                    DateTime tstart = Convert.ToDateTime(personTaskList[2][i]);
+
+                    DateTime restStartTime = new DateTime(beforeDT.Year, beforeDT.Month, beforeDT.Day, 12, 0, 0);
+                    DateTime restEndTime = new DateTime(beforeDT.Year, beforeDT.Month, beforeDT.Day, 14, 0, 0);
+
+                    TimeSpan td = beforeDT.Subtract(tstart);
+                    double timeInterval = td.TotalMinutes;
+                    if ((timeInterval > 0)&&(timeInterval < Convert.ToDouble(personTaskList[1][i])))
+                    {
+                        if (beforeDT.AddMinutes(minTime) < restStartTime)
+                        {
+                            taskStartTime = Convert.ToString(beforeDT);
+                        }
+                        else
+                        {
+                            taskStartTime = Convert.ToString(restEndTime);
+                        }
+                        t_index = i;
+                        break;
+                    }
+                }
+                int count = personTaskList[0].Count;
+                List<string>[] newPersonTaskList = new List<string>[4] {
+                    new List<string>(),
+                    new List<string>(),
+                    new List<string>(),
+                    new List<string>()};
+                //TASK_ID,SPEND_TIME,START_TIME,END_TIME
+
+                newPersonTaskList[0].Add(taskID);
+                newPersonTaskList[1].Add(minTime.ToString());
+                newPersonTaskList[2].Add(taskStartTime);
+                newPersonTaskList[3].Add(AddMinutes(taskStartTime, minTime));
+
+                for (int i = 1; i < count-t_index; i++)
+                {
+                    newPersonTaskList[0].Add(personTaskList[0][t_index + i]);
+                    newPersonTaskList[1].Add(personTaskList[1][t_index + i]);
+                    newPersonTaskList[2].Add(newPersonTaskList[3][i - 1]);
+                    newPersonTaskList[3].Add(AddMinutes(newPersonTaskList[2][i], Convert.ToInt32(newPersonTaskList[1][i])));
+                }
+                scon.UpdateTaskTimeToSQL(choosePersonID, newPersonTaskList);
 
             }
             else
@@ -147,7 +202,7 @@ namespace GAMSDemo
                 //运行GAMS模型
                 GAMSModel gModel = new GAMSModel(workPath); //GAMS运行模型的工作区，会在此文件夹生成相关调试过程文件
                                                             //gModel.Model_N = scon.Model_N;
-                gModel.Model_N = scon.Model_N;
+                gModel.Model_N = 10;
                 List<string>[] resultData = gModel.Run(listData);   //得到GAMS的运行结果
 
                 //将模型运行的最终结果存进数据库
@@ -198,6 +253,15 @@ namespace GAMSDemo
             DateTime afterDT = DateTime.Now;
             TimeSpan ts = afterDT.Subtract(beforeDT);
             Console.WriteLine("求解总共花费{0:0.0}min.", ts.TotalMinutes);
+        }
+
+        public static string AddMinutes(string t, int interval)
+        {
+            DateTime ts = Convert.ToDateTime(t);
+            DateTime te = ts.AddMinutes(interval);
+            string str_te = te.ToString();
+
+            return str_te;
         }
     }
 }

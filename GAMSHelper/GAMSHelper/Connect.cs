@@ -210,7 +210,35 @@ namespace GAMSHelper
             return listData;
         }
 
-        public List<string>[] GetPersonPositionIDFromSQL(string command)
+        public List<string> GetHighLevelPersonIDFromSQL(string command1)
+        {
+            List<string> personID = new List<string>();
+
+            string conn = "server=" + server + ";database=" + database + ";user=" + user + ";pwd=" + pwd;
+            SqlConnection myconnect;
+            myconnect = new SqlConnection(conn);
+            myconnect.Open();
+
+            try
+            {
+                SqlCommand mycomm = new SqlCommand(command1, myconnect);
+                SqlDataReader rd = mycomm.ExecuteReader();
+                while (rd.Read())
+                {
+                    personID.Add(rd["PERSON_ID"].ToString());
+                }
+                rd.Close();
+                myconnect.Close();
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+
+            return personID;
+        }
+
+        public List<string>[] GetPersonPositionIDFromSQL(string command2)
         {
             List<string> personID = new List<string>();
             List<string> positionID = new List<string>();
@@ -222,7 +250,7 @@ namespace GAMSHelper
 
             try
             {
-                SqlCommand mycomm = new SqlCommand(command, myconnect);
+                SqlCommand mycomm = new SqlCommand(command2, myconnect);
                 SqlDataReader rd = mycomm.ExecuteReader();
                 while (rd.Read())
                 {
@@ -256,7 +284,7 @@ namespace GAMSHelper
             {
                 for (int i = 0; i < startPosition.Count; i++)
                 {
-                    string command = "SELECT * FROM " + tableName + " WHERE FROM_POSITION_ID='" + startPosition[i] + "' AND TO_POSITION_ID='" + endPosition + "';";
+                    string command = "SELECT * FROM " + tableName + " WHERE FROM_ID='" + startPosition[i] + "' AND TO_ID='" + endPosition + "';";
                     SqlCommand mycomm = new SqlCommand(command, myconnect);
                     SqlDataReader rd = mycomm.ExecuteReader();
                     while (rd.Read())
@@ -273,6 +301,62 @@ namespace GAMSHelper
             }
 
             return spendTime;
+        }
+
+        public List<string>[] GetPersonTaskListFromSQL(string personID)
+        {
+            List<string> taskID = new List<string>();
+            List<string> spendTime = new List<string>();
+            List<string> startTime = new List<string>();
+
+            SqlConnection myconnect;
+            string conn = "server=" + server + ";database=" + database + ";user=" + user + ";pwd=" + pwd + "";
+            myconnect = new SqlConnection(conn);
+            myconnect.Open();
+
+            string tableName = "IMS_PATROL_TASK_TIME";
+            SqlCommand mycomm = new SqlCommand("SELECT * FROM " + tableName + " WHERE PERSON_ID='" + personID + "' ORDER BY ORDER_NO ASC;", myconnect);
+            SqlDataReader rd = mycomm.ExecuteReader();
+            while (rd.Read())
+            {
+                taskID.Add(rd["TASK_ID"].ToString());
+                spendTime.Add(rd["SPEND_TIME"].ToString());
+                startTime.Add(rd["START_TIME"].ToString());
+            }
+            myconnect.Close();
+
+            List<string>[] p_taskList = new List<string>[3];
+            p_taskList[0] = taskID;
+            p_taskList[1] = spendTime;
+            p_taskList[2] = startTime;
+
+            return p_taskList;
+        }
+
+        public void UpdateTaskTimeToSQL(string personID, List<string>[] newPersonTaskList)
+        {
+            SqlConnection myconnect;
+            string conn = "server=" + server + ";database=" + database + ";user=" + user + ";pwd=" + pwd + "";
+            myconnect = new SqlConnection(conn);
+            myconnect.Open();
+
+            string tableName = "IMS_PATROL_TASK_TIME";
+            try
+            {
+                SqlCommand mycomm1 = new SqlCommand("insert into " + tableName + "(PERSON_ID,TASK_ID,ORDER_NO,SPEND_TIME,START_TIME,END_TIME) values('" + personID + "','" + newPersonTaskList[0][0] + "',99," + Convert.ToInt32(newPersonTaskList[1][0]) + ",'" + newPersonTaskList[2][0] + "','" + newPersonTaskList[3][0] + "');", myconnect);
+                mycomm1.ExecuteNonQuery();
+
+                for (int i = 1; i < newPersonTaskList[0].Count; i++)
+                {
+                    SqlCommand mycomm2 = new SqlCommand("UPDATE " + tableName + " SET START_TIME = '" + newPersonTaskList[2][i] + "', END_TIME = '" + newPersonTaskList[3][i] + "'WHERE PERSON_ID = '" + personID + "' AND TASK_ID = '" + newPersonTaskList[0][i] + "';", myconnect);
+                    mycomm2.ExecuteNonQuery();
+                }
+                myconnect.Close();
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
         }
 
         /// <summary>
