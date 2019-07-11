@@ -1,5 +1,6 @@
 ﻿using GAMSHelper;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 
@@ -22,8 +23,8 @@ namespace GAMSDemo
             string command2 = null;
             string command3 = null;
             string command4 = null;
-
-            string debug = null;  //是否启用日志记录，当debug = "LOG"，启用日志记录
+            string time = null;
+            string debug = null;  //是否启用日志记录，"LOG"：启用日志记录；"NONE"：不启用日志记录
 
             string command5 = null;  //查询技能高于某个水平的人员位置的SQL语句
             string command6 = null;  //查询人员位置的SQL语句
@@ -48,15 +49,17 @@ namespace GAMSDemo
                 pwd = "123";
 
                 command1 = "select * from IMS_PATROL_PERSON_ON_DUTY;";
-                command2 = "select * from IMS_PATROL_TASK_SKILL;";
+                command2 = "select * from IMS_PATROL_TASK_SKILL ORDER BY TASK_PRIORITY ASC;";
                 command3 = "select * from IMS_PATROL_PERSON_TASK_TIME;";
                 command4 = "select * from IMS_PATROL_TASK_SPEND_TIME;";
+                time = "8:30";
+                debug = "NONE";
 
                 command5 = "select PERSON_ID from IMS_PATROL_PERSON_ON_DUTY where SKILL_LEVEL<=2;";
                 taskID = "TS0015";
                 t_positionID = "";
             }
-            else if (args.Length == 8)
+            else if (args.Length == 10) //任务调度传递10个参数
             {
                 server = args[0];
                 database = args[1];
@@ -67,30 +70,30 @@ namespace GAMSDemo
                 command2 = args[5];
                 command3 = args[6];
                 command4 = args[7];
+
+                time = args[8];
+                debug = args[9];
+
+                string[] lstr = new string[2] { "7:30", "8:30" };
+                bool exists = ((IList)lstr).Contains(time);
+                if (!exists)
+                {
+                    Console.WriteLine("工作开始时间有误");
+                    return;
+                }
             }
-            else if(args.Length == 9)
+            else if(args.Length == 9) //紧急任务处理传递9个参数
             {
                 server = args[0];
                 database = args[1];
                 user = args[2];
                 pwd = args[3];
 
-                if (args[8] == "LOG")
-                {
-                    command1 = args[4];
-                    command2 = args[5];
-                    command3 = args[6];
-                    command4 = args[7];
-                    debug = args[8];
-                }
-                else
-                {
-                    command5 = args[4];
-                    command6 = args[5];
-                    position_tableName = args[6];
-                    taskID = args[7];
-                    t_positionID = args[8];
-                }
+                command5 = args[4];
+                command6 = args[5];
+                position_tableName = args[6];
+                taskID = args[7];
+                t_positionID = args[8];
             }
             else
             {
@@ -201,52 +204,22 @@ namespace GAMSDemo
 
                 //运行GAMS模型
                 GAMSModel gModel = new GAMSModel(workPath); //GAMS运行模型的工作区，会在此文件夹生成相关调试过程文件
-                                                            //gModel.Model_N = scon.Model_N;
-                gModel.Model_N = 10;
+                gModel.Model_N = scon.Model_N;
+                //gModel.Model_N = 16;
+                gModel.Work_Start_Time = time;
                 List<string>[] resultData = gModel.Run(listData);   //得到GAMS的运行结果
 
                 //将模型运行的最终结果存进数据库
-                string tableName = scon.SendDataToSQL(resultData);
+                string tableName = scon.SendDataToSQL(resultData, time);
                 Console.WriteLine("求解完毕,求解结果保存在" + tableName);
 
                 //开启日志记录
                 if (debug == "LOG")
                 {
                     string fileName = workPath + @"\Log.txt";
-                    Logger logger = new Logger();
-
-                    #region 数据库数据进行记录
-                    for (int i = 0; i < 2; i++) //前两个表
-                    {
-                        for (int j = 0; j < listData[2 * i].Count; j++)
-                        {
-                            logger.AddLogToTXT(listData[2 * i][j] + "     " + listData[2 * i + 1][j], fileName);
-                        }
-                        logger.AddLogToTXT("", fileName);
-                    }
-                    for (int i = 2; i < 4; i++) //后两个表
-                    {
-                        for (int j = 0; j < listData[3 * i - 2].Count; j++)
-                        {
-                            logger.AddLogToTXT(listData[3 * i - 2][j] + "     " + listData[3 * i - 1][j] + "     " + listData[3 * i][j], fileName);
-                        }
-                        logger.AddLogToTXT("", fileName);
-                    }
-                    #endregion
-
-                    #region GAMS运行结果记录
-                    for (int i = 0; i < resultData[0].Count; i++)
-                    {
-                        logger.AddLogToTXT(resultData[0][i] + "     " + resultData[1][i] + "     " + resultData[2][i] + "     " + resultData[3][i], fileName);
-                    }
-                    logger.AddLogToTXT("", fileName);
-                    for (int i = 4; i < resultData[4].Count; i++)
-                    {
-                        logger.AddLogToTXT(resultData[4][i] + "     " + resultData[5][i] + "     " + resultData[6][i] + "     " + resultData[7][i], fileName);
-                    }
-                    #endregion
-
-                    logger.AddLogToTXT("-----------------------------------", fileName);
+                    Log("-----"+ beforeDT.ToString() + "-----", fileName);
+                    Log(listData, fileName);
+                    Log(resultData, fileName);
                 }
             }
             
@@ -262,6 +235,22 @@ namespace GAMSDemo
             string str_te = te.ToString();
 
             return str_te;
+        }
+
+        public static void Log(List<string>[] data,string fileName)
+        {
+            Logger logger = new Logger();
+            foreach (List<string> item in data)
+            {
+                string txt = String.Join(",",item.ToArray());
+                logger.AddLogToTXT(txt, fileName);
+            }
+            logger.AddLogToTXT("", fileName);
+        }
+        public static void Log(string str, string fileName)
+        {
+            Logger logger = new Logger();
+            logger.AddLogToTXT(str, fileName);
         }
     }
 }

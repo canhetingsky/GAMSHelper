@@ -12,6 +12,7 @@ public class myclass {
 		String command2 = "\"select * from IMS_PATROL_TASK_SKILL;\"";
 		String command3 = "\"select * from IMS_PATROL_PERSON_TASK_TIME;\"";
 		String command4 = "\"select * from IMS_PATROL_TASK_SPEND_TIME;\"";
+		String command5 = "\"select PERSON_ID from IMS_PATROL_PERSON_ON_DUTY where SKILL_LEVEL<=2;\"";
 		Runtime rn = Runtime.getRuntime();
 		Process p = null;
 		try {
