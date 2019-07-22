@@ -71,6 +71,238 @@ namespace GAMSHelper
         /// </summary>
         ~SQLConnect() { }
 
+        public List<string>[] DataPretreatment()
+        {
+            List<string> Pi1 = new List<string>();
+            List<string> Pi2 = new List<string>();
+            List<string> TLi1 = new List<string>();
+            List<string> TLi2 = new List<string>();
+            List<string> Tij1 = new List<string>();
+            List<string> Tij2 = new List<string>();
+            List<string> Tij3 = new List<string>();
+            List<string> Tjj1 = new List<string>();
+            List<string> Tjj2 = new List<string>();
+            List<string> Tjj3 = new List<string>();
+
+            List<string> TLi3 = new List<string>(); //添加任务优先级
+
+            List<string> pointName = new List<string>(); //任务所属的井组，新的任务号
+            List<string> oldTask = new List<string>(); //任务间以 , 隔开
+
+            string conn = "server=" + server + ";database=" + database + ";user=" + user + ";pwd=" + pwd;
+            SqlConnection myconnect;
+            myconnect = new SqlConnection(conn);
+            myconnect.Open();
+
+            //1
+            try
+            {
+                string command1 = "select * from IMS_PATROL_PERSON_ON_DUTY;";
+                SqlCommand mycomm1 = new SqlCommand(command1, myconnect);
+                SqlDataReader rd1 = mycomm1.ExecuteReader();
+                while (rd1.Read())
+                {
+                    string personId = rd1["PERSON_ID"].ToString();
+                    string skillLevel = rd1["SKILL_LEVEL"].ToString();
+                    patrol.person_id.Add(personId);
+                    patrol.p_skill_level.Add(skillLevel);
+                    Pi1.Add(personId);
+                    Pi2.Add(skillLevel);
+                }
+                rd1.Close();
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+
+            //2
+            try
+            {
+                string command1 = "select POINT_NAME from IMS_PATROL_TASK_SKILL ORDER BY TASK_PRIORITY;";
+                List<string> pName = new List<string>();
+                SqlCommand mycomm1 = new SqlCommand(command1, myconnect);
+                SqlDataReader rd1 = mycomm1.ExecuteReader();
+                while (rd1.Read())
+                {
+                    pName.Add(rd1["POINT_NAME"].ToString());   //查找所有的井组，里面有重复的元素，需处理
+                }
+                rd1.Close();
+
+                List<string> name = new List<string>(); //所有的井组，不含重复元素
+                foreach (string pn in pName)
+                {
+                    if (!name.Contains(pn)) //剔除重复元素
+                        name.Add(pn);
+                }
+
+                foreach (string item in name)   //遍历井组
+                {
+                    for (int i = 0; i < 4; i++) //遍历井组的优先级
+                    {
+                        string command2 = String.Format("select * from IMS_PATROL_TASK_SKILL where POINT_NAME='{0}' and TASK_PRIORITY={1};", item, i);
+                        SqlCommand mycomm2 = new SqlCommand(command2, myconnect);
+                        SqlDataReader rd2 = mycomm2.ExecuteReader();
+
+                        List<int> level = new List<int>();
+                        List<string> task = new List<string>();
+                        
+                        while (rd2.Read())
+                        {
+                            task.Add(rd2["TASK_ID"].ToString());
+                            level.Add(Convert.ToInt32(rd2["SKILL_LEVEL"]));
+                        }
+                        rd2.Close();
+
+                        if (level.Count > 0)
+                        {
+                            string newTaskID = String.Format("{0}-{1}", item, i);
+                            TLi1.Add(newTaskID); 
+                            TLi3.Add(i.ToString());
+
+                            level.Sort();
+                            level.Reverse();
+                            TLi2.Add(level[0].ToString());
+                            
+                            pointName.Add(newTaskID);
+                            string str = String.Join("|", task.ToArray());
+                            oldTask.Add(str);
+
+                            patrol.task_id.Add(String.Format("{0}-{1}", item, i));
+                            patrol.t_skill_level.Add(level[0].ToString());
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+
+            //3
+            try
+            {
+                for (int k = 0; k < oldTask.Count; k++)
+                {
+                    string[] ot = oldTask[k].Split(new char[]{ '|'}, StringSplitOptions.RemoveEmptyEntries);
+                    //拼接查询指令
+                    foreach (string pid in Pi1)
+                    {
+                        string command1 = String.Format("select SPEND_TIME from IMS_PATROL_PERSON_TASK_TIME where PERSON_ID='{0}'", pid);
+                        command1 += String.Format(" and (TASK_ID='{0}'",ot[0]);
+                        if (ot.Length > 1)
+                        {
+                            for (int i = 1; i < ot.Length; i++)
+                            {
+                                command1 += String.Format(" or TASK_ID='{0}'", ot[i]);
+                            }
+                        }
+                        command1 += ");";
+                        int spt = 0;
+                        SqlCommand mycomm1 = new SqlCommand(command1, myconnect);
+                        SqlDataReader rd1 = mycomm1.ExecuteReader();
+                        while (rd1.Read())
+                        {
+                            spt += Convert.ToInt32(rd1["SPEND_TIME"]);
+                            int timeMax = 999999;
+                            spt = spt >= timeMax ? timeMax : spt;
+                        }
+                        rd1.Close();
+
+                        Tij1.Add(pid);
+                        Tij2.Add(TLi1[k]);
+                        Tij3.Add(spt.ToString());
+                    }
+                }
+                Logger logger = new Logger();
+                string txt = String.Join(",", Tij1.ToArray());
+                logger.AddLogToTXT(txt, "s.csv");
+                txt = String.Join(",", Tij2.ToArray());
+                logger.AddLogToTXT(txt, "s.csv");
+                txt = String.Join(",", oldTask.ToArray());
+                logger.AddLogToTXT(txt, "s.csv");
+                txt = String.Join(",", Tij3.ToArray());
+                logger.AddLogToTXT(txt, "s.csv");
+                logger.AddLogToTXT("", "s.csv");
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+
+            //4
+            try
+            {
+                for (int i = 0; i < TLi1.Count; i++)
+                {
+                    string str1 = TLi1[i].Split(new char[] { '-' })[0];
+                    for (int j = 0; j < TLi1.Count; j++)
+                    {
+
+                        Tjj1.Add(TLi1[i]);
+                        Tjj2.Add(TLi1[j]);
+
+                        string str2 = TLi1[j].Split(new char[] { '-' })[0];
+                        if (str2 == str1)
+                        {
+                            Tjj3.Add("0");
+                        }
+                        else
+                        {
+                            string command1 = String.Format("select SPEND_TIME from IMS_PATROL_POINT_SPEND_TIME where FROM_POINT_NAME='{0}' and TO_POINT_NAME='{1}';", str1, str2);
+                            SqlCommand mycomm1 = new SqlCommand(command1, myconnect);
+
+                            SqlDataReader rd1 = mycomm1.ExecuteReader();
+                            while (rd1.Read())
+                            {
+                                Tjj3.Add(rd1["SPEND_TIME"].ToString());
+                                break;
+                            }
+                            rd1.Close();
+                        }
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+
+            myconnect.Close();
+
+            int count = 13;
+            List<string>[] listData = new List<string>[count];
+
+            listData[0] = Pi1;
+            listData[1] = Pi2;
+            listData[2] = TLi1;
+            listData[3] = TLi2;
+            listData[4] = Tij1;
+            listData[5] = Tij2;
+            listData[6] = Tij3;
+            listData[7] = Tjj1;
+            listData[8] = Tjj2;
+            listData[9] = Tjj3;
+            listData[10] = TLi3; //任务的优先级
+            listData[11] = pointName;
+            listData[12] = oldTask;
+
+            int i1 = patrol.person_id.Count;  //人数
+            int i2 = patrol.task_id.Count;    //任务数
+            //n=((任务数-1)/人数+1)*2
+            if ((i2 - 1) % i1 == 0)
+            {
+                model_n = ((i2 - 1) / i1 + 1) * 2;
+            }
+            else
+            {
+                model_n = ((i2 - 1) / i1 + 2) * 2;
+            }
+
+            return listData;
+        }
+
         /// <summary>
         /// Gets the GAMS Model's data from SQL.
         /// </summary>
@@ -442,7 +674,7 @@ namespace GAMSHelper
         //    return tableName;
         //}
 
-        public string SendDataToSQL(List<string>[] resultData,string time)
+        public string SendDataToSQL(List<string>[] resultData, List<string>[] associatedTask, string time)
         {
             SqlConnection myconnect;
             string conn = "server=" + server + ";database=" + database + ";user=" + user + ";pwd=" + pwd + "";
@@ -498,7 +730,7 @@ namespace GAMSHelper
             XS[1] = resultData[7];
             XS[2] = resultData[8];
             List<string>[] listTask = GetTaskTimeFromSQL(temporarytable,XS);
-            SendTaskTimeToSQL(tableName, listTask);
+            SendTaskTimeToSQL(tableName, listTask, associatedTask);
 
             return tableName;
         }
@@ -689,7 +921,7 @@ namespace GAMSHelper
         /// </summary>
         /// <param name="tableName">Name of the table.</param>
         /// <param name="listTask">The list task.</param>
-        private void SendTaskTimeToSQL(string tableName, List<string>[] listTask)
+        private void SendTaskTimeToSQL(string tableName, List<string>[] listTask, List<String>[] associatedTask)
         {
             SqlConnection myconnect;
             string conn = "server=" + server + ";database=" + database + ";user=" + user + ";pwd=" + pwd + "";
@@ -700,10 +932,13 @@ namespace GAMSHelper
             {
                 SqlCommand mycomm = new SqlCommand("truncate table " + tableName + ";", myconnect);
                 mycomm.ExecuteNonQuery();
-
                 for (int i = 0; i < listTask[0].Count; i++)
                 {
-                    SqlCommand mycomm1 = new SqlCommand("insert into " + tableName + "(PERSON_ID ,TASK_ID,ORDER_NO,SPEND_TIME,START_TIME,END_TIME) values('" + listTask[0][i] + "','" + listTask[1][i] + "','" + listTask[2][i] + "','" + listTask[3][i] + "','" + listTask[4][i] + "','" + listTask[5][i] +  "');", myconnect);
+                    //string str = "insert into " + tableName + "(PERSON_ID ,TASK_ID,ORDER_NO,SPEND_TIME,START_TIME,END_TIME) values('" + listTask[0][i] + "','" + listTask[1][i] + "','" + listTask[2][i] + "','" + listTask[3][i] + "','" + listTask[4][i] + "','" + listTask[5][i] + "');";
+                    int index = associatedTask[0].FindIndex(item => item.Equals(listTask[1][i]));
+                    string oldTask = associatedTask[1][index];
+                    string str = String.Format("insert into {0}(PERSON_ID ,TASK_ID,ORDER_NO,SPEND_TIME,START_TIME,END_TIME,ORIGIN_TASK_ID) values('{1}','{2}','{3}','{4}','{5}','{6}','{7}');", tableName,listTask[0][i], listTask[1][i], listTask[2][i],listTask[3][i],listTask[4][i],listTask[5][i], oldTask);
+                    SqlCommand mycomm1 = new SqlCommand(str, myconnect);
                     mycomm1.ExecuteNonQuery();
                 }
                 
