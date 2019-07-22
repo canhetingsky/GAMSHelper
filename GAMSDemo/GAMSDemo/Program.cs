@@ -10,7 +10,7 @@ namespace GAMSDemo
     {
         static void Main(string[] args)
         {
-            DateTime startDT = DateTime.Now;
+            DateTime beforeDT = DateTime.Now;
 
             //数据库相关信息
             string server;  //数据库地址
@@ -103,7 +103,7 @@ namespace GAMSDemo
             #endregion
 
 
-            if ((debug == null) && (args.Length == 9))  //紧急任务调度
+            if ((debug == null) && (args.Length == 9))
             {
                 SQLConnect scon = new SQLConnect(server, database, user, pwd);
                 personID = scon.GetHighLevelPersonIDFromSQL(command5);  //得到可以做此任务的人员ID
@@ -150,16 +150,16 @@ namespace GAMSDemo
                 {
                     DateTime tstart = Convert.ToDateTime(personTaskList[2][i]);
 
-                    DateTime restStartTime = new DateTime(startDT.Year, startDT.Month, startDT.Day, 12, 0, 0);
-                    DateTime restEndTime = new DateTime(startDT.Year, startDT.Month, startDT.Day, 14, 0, 0);
+                    DateTime restStartTime = new DateTime(beforeDT.Year, beforeDT.Month, beforeDT.Day, 12, 0, 0);
+                    DateTime restEndTime = new DateTime(beforeDT.Year, beforeDT.Month, beforeDT.Day, 14, 0, 0);
 
-                    TimeSpan td = startDT.Subtract(tstart);
+                    TimeSpan td = beforeDT.Subtract(tstart);
                     double timeInterval = td.TotalMinutes;
                     if ((timeInterval > 0)&&(timeInterval < Convert.ToDouble(personTaskList[1][i])))
                     {
-                        if (startDT.AddMinutes(minTime) < restStartTime)
+                        if (beforeDT.AddMinutes(minTime) < restStartTime)
                         {
-                            taskStartTime = Convert.ToString(startDT);
+                            taskStartTime = Convert.ToString(beforeDT);
                         }
                         else
                         {
@@ -196,18 +196,7 @@ namespace GAMSDemo
             {
                 //从数据库获取数据
                 SQLConnect scon = new SQLConnect(server, database, user, pwd);
-                //List<string>[] listData = scon.GetDataFromSQL(command1, command2, command3, command4);
-                List<string>[] dataBaseData = scon.DataPretreatment();
-
-                {
-                    string fileName = "Log.csv";
-                    Log("-----" + startDT.ToString() + "-----", fileName);
-                    Log(dataBaseData, fileName);
-
-                    DateTime afterDT = DateTime.Now;
-                    TimeSpan ts = afterDT.Subtract(startDT);
-                    Console.WriteLine("数据查询花费{0:0.0}s.", ts.TotalSeconds);
-                }
+                List<string>[] listData = scon.GetDataFromSQL(command1, command2, command3, command4);
 
                 //设置GAMS运行路径
                 string workPath = Directory.GetCurrentDirectory() + @"\GAMS_workPath";
@@ -216,32 +205,27 @@ namespace GAMSDemo
                 //运行GAMS模型
                 GAMSModel gModel = new GAMSModel(workPath); //GAMS运行模型的工作区，会在此文件夹生成相关调试过程文件
                 gModel.Model_N = scon.Model_N;
+                //gModel.Model_N = 16;
                 gModel.Work_Start_Time = time;
-                List<string>[] listData = new List<string>[11];
-                Array.Copy(dataBaseData, 0, listData, 0, listData.Length);
-                List<string>[] resultData = gModel.Run(listData);   //这里只用到listData的前10个数据。运行GAMS模型，得到运行结果
+                List<string>[] resultData = gModel.Run(listData);   //得到GAMS的运行结果
 
                 //将模型运行的最终结果存进数据库
-                List<string>[] listTask = new List<string>[2];
-                Array.Copy(dataBaseData, 11, listTask, 0, listTask.Length);
-                string tableName = scon.SendDataToSQL(resultData, listTask, time);
+                string tableName = scon.SendDataToSQL(resultData, time);
                 Console.WriteLine("求解完毕,求解结果保存在" + tableName);
 
                 //开启日志记录
                 if (debug == "LOG")
                 {
                     string fileName = workPath + @"\Log.txt";
-                    Log("-----"+ startDT.ToString() + "-----", fileName);
+                    Log("-----"+ beforeDT.ToString() + "-----", fileName);
                     Log(listData, fileName);
                     Log(resultData, fileName);
                 }
             }
-
-            {
-                DateTime afterDT = DateTime.Now;
-                TimeSpan ts = afterDT.Subtract(startDT);
-                Console.WriteLine("求解总共花费{0:0.0}min.", ts.TotalMinutes);
-            }
+            
+            DateTime afterDT = DateTime.Now;
+            TimeSpan ts = afterDT.Subtract(beforeDT);
+            Console.WriteLine("求解总共花费{0:0.0}min.", ts.TotalMinutes);
         }
 
         public static string AddMinutes(string t, int interval)

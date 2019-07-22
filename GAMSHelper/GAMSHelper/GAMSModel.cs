@@ -485,7 +485,7 @@ cons_6(i,j,jp,n1)$(ord(n1) ge 1)..    0=l=TTf(i,j,jp,n1)-TTs(i,j,jp,n1)-Tjj(j,jp
 cons_6_1(i,j,jp,n1)$(ord(n1) ge 1)..  TTf(i,j,jp,n1)-TTs(i,j,jp,n1)-Tjj(j,jp)*X(i,j,jp,n1)=l=BX(i,j,jp,n1);
 cons_7(i,j,n2)$(ord(n2) ge 1)..       0=l=Tf(i,j,n2)-Ts(i,j,n2)-Tij(i,j)*XS(i,j,n2);
 cons_7_1(i,j,n2)$(ord(n2) ge 1)..     Tf(i,j,n2)-Ts(i,j,n2)-Tij(i,j)*XS(i,j,n2)=l=BXS(i,j,n2);
-*cons_8(i).. sum((j,n),X(i,j,'AS00-0',n))=l=1;
+*cons_8(i).. sum((j,n),X(i,j,'TS0000',n))=l=1;
 cons_8(i,jp)$(ord(jp) eq 1).. sum((j,n),X(i,j,jp,n))=l=1;
 
 $ontext
@@ -634,19 +634,19 @@ cons_6(i,n1)$(ord(n1) ge 1)..   Tf(i,n1)-Ts(i,n1)-sum((j,jp),Tjj(j,jp)*X(i,j,jp,
 cons_6_1(i,n1)$(ord(n1) ge 1)..   Tf(i,n1)-Ts(i,n1)-sum((j,jp),Tjj(j,jp)*X(i,j,jp,n1))=g=0;
 cons_7(i,n2)$(ord(n2) ge 1 )..        Tf(i,n2)-Ts(i,n2)-sum(j,Tij(i,j)*XS(i,j,n2))=l=0;
 cons_7_1(i,n2)$(ord(n2) ge 1 )..        Tf(i,n2)-Ts(i,n2)-sum(j,Tij(i,j)*XS(i,j,n2))=g=0;
-cons_8(i).. sum((j,n),X(i,j,'AS00-0',n))=l=1;
+cons_8(i).. sum((j,n),X(i,j,'TS0000',n))=l=1;
 cons_9(j3).. sum((i, n2), XS(i, j3, n2))=e=1;
 cons_15(i,n)$(ord(n) ge 2).. Tf(i,n-1)=l=Ts(i,n);
 cons_15_1(i,n)..  Ts(i,n)=l=H;
 cons_15_2(i,n)..  Tf(i,n)=l=H;
-cons_25(i)..  sum(n2$(ord(n2) ge 3),XS(i,'AS0-0',n2))=g=1;
-cons_22(i)..       BL=g=sum(n2,XS11(i,'AS0-0',n2));
-cons_22_1(i,n2)..  XS11(i,'AS0-0',n2)=l=XS(i,'AS0-0',n2)*H  ;
-cons_22_2(i,n2)..  XS21(i,'AS0-0',n2)=l=(1-XS(i,'AS0-0',n2))*H  ;
-cons_22_3(i,n2)..  XS21(i,'AS0-0',n2)=g=0  ;
-cons_22_4(i,n2)..  XS11(i,'AS0-0',n2)=g=0  ;
-cons_22_5(i,n2)..  XS21(i,'AS0-0',n2)+ XS11(i,'AS0-0',n2)=e=Ts(i,n2);
-cons_21(i,n2)..       XS(i,'AS0-0',n2)*BU=l=Tf(i,n2);
+cons_25(i)..  sum(n2$(ord(n2) ge 3),XS(i,'TS00',n2))=g=1;
+cons_22(i)..       BL=g=sum(n2,XS11(i,'TS00',n2));
+cons_22_1(i,n2)..  XS11(i,'TS00',n2)=l=XS(i,'TS00',n2)*H  ;
+cons_22_2(i,n2)..  XS21(i,'TS00',n2)=l=(1-XS(i,'TS00',n2))*H  ;
+cons_22_3(i,n2)..  XS21(i,'TS00',n2)=g=0  ;
+cons_22_4(i,n2)..  XS11(i,'TS00',n2)=g=0  ;
+cons_22_5(i,n2)..  XS21(i,'TS00',n2)+ XS11(i,'TS00',n2)=e=Ts(i,n2);
+cons_21(i,n2)..       XS(i,'TS00',n2)*BU=l=Tf(i,n2);
 cons_AX_1(i,j,n).. AXS(i,j,n)=l=XS(i,j,n);
 cons_AX_2(i,j,n)$(ord(n) le Nmax-1).. AXS(i,j,n)=l=XS(i,j,n+1);
 cons_AX_3(i,j,n)$(ord(n) le Nmax-1).. AXS(i,j,n)=g=XS(i,j,n)+XS(i,j,n+1)-1;
@@ -656,10 +656,10 @@ obj.. cost =e=(-0.999)*sum((i,j2,n2),XS(i,j2,n2))+sum((i,j1,n),ord(n)*XS(i,j1,n)
 Model test /all/;
 
 *设置初值和终值
-XS.fx(i, 'AS00-0', '0')=1 ;
+XS.fx(i, 'TS0000', '0')=1 ;
 XS.fx(i, j, n1)=0;
-*XS.fx(i, 'AS00-0', '18')=1 ;
-XS.fx(i, 'AS00-0', n)$(ord(n) eq Nmax)=1;
+*XS.fx(i, 'TS0000', '18')=1 ;
+XS.fx(i, 'TS0000', n)$(ord(n) eq Nmax)=1;
 X.fx(i,j,j,n)=0;
 X.fx(i,j,jp,n2)=0;
 *TS.l(i,n)=0;
