@@ -75,12 +75,6 @@
     <StartupObject />
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="GAMS.net4">
-      <HintPath>..\..\GAMSHelper\GAMSHelper\bin\Release\GAMS.net4.dll</HintPath>
-    </Reference>
-    <Reference Include="GAMSHelper">
-      <HintPath>..\..\GAMSHelper\GAMSHelper\bin\Release\GAMSHelper.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
@@ -95,6 +89,12 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\GAMSHelper\GAMSHelper\GAMSHelper.csproj">
+      <Project>{9314c5cb-eb55-4620-933b-6a7ad945be49}</Project>
+      <Name>GAMSHelper</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
