@@ -43,36 +43,34 @@ namespace GAMSDemo
             #region 输入参数解析
             if (args.Length == 0)
             {
+                //共有参数
                 server = "DESKTOP-36C9L6T";
                 database = "lushushu";
                 user = "sa";
                 pwd = "123";
 
-                command1 = "select * from IMS_PATROL_PERSON_ON_DUTY;";
-                command2 = "select * from IMS_PATROL_TASK_SKILL ORDER BY TASK_PRIORITY ASC;";
-                command3 = "select * from IMS_PATROL_PERSON_TASK_TIME;";
-                command4 = "select * from IMS_PATROL_TASK_SPEND_TIME;";
+                //任务调度参数
+                //command1 = "select * from IMS_PATROL_PERSON_ON_DUTY;";
+                //command2 = "select * from IMS_PATROL_TASK_SKILL ORDER BY TASK_PRIORITY ASC;";
+                //command3 = "select * from IMS_PATROL_PERSON_TASK_TIME;";
+                //command4 = "select * from IMS_PATROL_TASK_SPEND_TIME;";
                 time = "8:30";
                 debug = "NONE";
 
+                //紧急任务参数
                 command5 = "select PERSON_ID from IMS_PATROL_PERSON_ON_DUTY where SKILL_LEVEL<=2;";
                 taskID = "TS0015";
                 t_positionID = "";
             }
-            else if (args.Length == 10) //任务调度传递10个参数
+            else if (args.Length == 6) //任务调度传递6个参数
             {
                 server = args[0];
                 database = args[1];
                 user = args[2];
                 pwd = args[3];
 
-                command1 = args[4];
-                command2 = args[5];
-                command3 = args[6];
-                command4 = args[7];
-
-                time = args[8];
-                debug = args[9];
+                time = args[4];
+                debug = args[5];
 
                 string[] lstr = new string[2] { "7:30", "8:30" };
                 bool exists = ((IList)lstr).Contains(time);
@@ -199,16 +197,6 @@ namespace GAMSDemo
                 //List<string>[] listData = scon.GetDataFromSQL(command1, command2, command3, command4);
                 List<string>[] dataBaseData = scon.DataPretreatment();
 
-                {
-                    string fileName = "Log.csv";
-                    Log("-----" + startDT.ToString() + "-----", fileName);
-                    Log(dataBaseData, fileName);
-
-                    DateTime afterDT = DateTime.Now;
-                    TimeSpan ts = afterDT.Subtract(startDT);
-                    Console.WriteLine("数据查询花费{0:0.0}s.", ts.TotalSeconds);
-                }
-
                 //设置GAMS运行路径
                 string workPath = Directory.GetCurrentDirectory() + @"\GAMS_workPath";
                 Console.WriteLine(workPath);
@@ -232,7 +220,7 @@ namespace GAMSDemo
                 {
                     string fileName = workPath + @"\Log.txt";
                     Log("-----"+ startDT.ToString() + "-----", fileName);
-                    Log(listData, fileName);
+                    Log(dataBaseData, fileName);
                     Log(resultData, fileName);
                 }
             }

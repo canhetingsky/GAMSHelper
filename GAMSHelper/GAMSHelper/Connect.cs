@@ -214,16 +214,6 @@ namespace GAMSHelper
                         Tij3.Add(spt.ToString());
                     }
                 }
-                Logger logger = new Logger();
-                string txt = String.Join(",", Tij1.ToArray());
-                logger.AddLogToTXT(txt, "s.csv");
-                txt = String.Join(",", Tij2.ToArray());
-                logger.AddLogToTXT(txt, "s.csv");
-                txt = String.Join(",", oldTask.ToArray());
-                logger.AddLogToTXT(txt, "s.csv");
-                txt = String.Join(",", Tij3.ToArray());
-                logger.AddLogToTXT(txt, "s.csv");
-                logger.AddLogToTXT("", "s.csv");
             }
             catch (Exception)
             {

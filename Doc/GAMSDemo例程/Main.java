@@ -1,6 +1,6 @@
 package TEST;
 
-public class myclass {
+public class Main {
 
 	public static void main(String[] args) {
 		String filePath = "C:\\Users\\Administrator\\Desktop\\GAMSHelper\\GAMSDemo\\GAMSDemo\\bin\\x64\\Release\\GAMSDemo.exe";
@@ -8,15 +8,12 @@ public class myclass {
 		String database = "lushushu";
 		String user = "sa";
 		String pwd = "123";
-		String command1 = "\"select * from IMS_PATROL_PERSON_ON_DUTY;\"";
-		String command2 = "\"select * from IMS_PATROL_TASK_SKILL;\"";
-		String command3 = "\"select * from IMS_PATROL_PERSON_TASK_TIME;\"";
-		String command4 = "\"select * from IMS_PATROL_TASK_SPEND_TIME;\"";
-		String command5 = "\"select PERSON_ID from IMS_PATROL_PERSON_ON_DUTY where SKILL_LEVEL<=2;\"";
+		String time= "8:30";
+		String debug = "NONE";
 		Runtime rn = Runtime.getRuntime();
 		Process p = null;
 		try {
-			String command = filePath+" "+server+" "+database+" "+user+" "+pwd+" "+command1+" "+command2+" "+command3+" "+command4;
+			String command = filePath+" "+server+" "+database+" "+user+" "+pwd+" "+time+" "+debug;
 			System.out.println("start");
 			System.out.println("command:  "+command);
 			p = rn.exec(command);
