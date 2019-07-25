@@ -35,6 +35,7 @@ namespace GAMSHelper
         private string workspacePath = null;
         private int model_n = 0;
         private string work_start_time;
+        private bool hasPriorityOne = false;
 
         public int Model_N
         {
@@ -102,18 +103,22 @@ namespace GAMSHelper
             for (int i = 0; i < listData[10].Count; i++)
             {
                 int priority = Convert.ToInt32(listData[10][i]);
+                if (priority == 1)
+                {
+                    hasPriorityOne = true;
+                }
                 string taskID = listData[2][i];
                 switch (priority)
                 {
-                    case 1:
+                    case 1: //j1、j3
                         gSet[2].AddRecord(taskID);
                         gSet[4].AddRecord(taskID);
                         break;
-                    case 2:
+                    case 2: //j2、j3
                         gSet[3].AddRecord(taskID);
                         gSet[4].AddRecord(taskID);
                         break;
-                    case 3:
+                    case 3: //j2
                         gSet[3].AddRecord(taskID);
                         break;
                     default:
@@ -387,166 +392,150 @@ namespace GAMSHelper
                 BU = "450";
             }
 
-            #region model1:前期模型
+            #region model1:没有紧急任务时运行此模型
             string model1 = @"
 Sets
-             n         时间点         " + n0 + @"
-             n1(n)     奇数           " + n1 + @"
-             n2(n)     偶数           " + n2 + @"
-             i         所有维修员元素点 
-             j         所有任务元素点
+             n         time point         " + n0 + @"            
+             n1(n)     odd  point         " + n1 + @"
+             n2(n)     even point         " + n2 + @"
+             j         all task           
+             i         所有维修员元素点    
+                     
+             j2(j)     非紧急任务           
+             j3(j)     必须完成任务           
 
 alias(j, jp, jpp);
+alias(j2, j2p);
 
-
-
-
-Parameters   PL(i)          维修人员i拥有级别 PL(i)以上技能
-             TL(j)          任务j所需技能        
-             Tij(i,j)       time         
-             Tjj(j,jp)      time
+Parameters   PL(i)       维修人员i拥有级别 PL(i)以上技能                      
+             TL(j)       任务j所需技能
+             Tij(i,j)      i in j     time
+             Tjj(j,jp)     j to jp    time   
 
 Scalar       PN        维修人员总数       /5/
-             H         总调度时间        /480/
+             H         总调度时间        /" + H + @"/
+             BL                          /" + BL + @"/
+             BU                          /" + BU + @"/ 
              Nmax;
-Nmax=card(n); 
+Nmax=card(n);           
+            
+
+
 
 $if not set gdxincname $abort 'no include file name for data file provided'
 $gdxin %gdxincname%
-$load i j PL TL Tij  Tjj
+$load i j  j2 j3 PL TL Tij  Tjj
 $gdxin
-
 
 Variables
              XS(i,j,n)         n时间段维修人员i在做j任务
              X(i,j,jp,n)       n时间段维修人员i从j到j'任务
-             Ts(i,j,n)
-             Tf(i,j,n)
-             TTs(i,j,jp,n)
-             TTf(i,j,jp,n)
+             Ts(i,n)
+             Tf(i,n)
+             XS2(i,j,n2)
+             XS1(i,j,n2)
+             XS21(i,j,n2)
+             XS11(i,j,n2)
              AXS(i,j,n)
              BX(i,j,jp,n)
              BXS(i,j,n)
              cost;
 
 Binary Variables    XS, X;
-Positive  Variables Ts,Tf,TTs,TTf;
+Positive  Variables Ts,Tf;
 
 Equations
 
 cons_1(j)                       所有任务都必须完成且只完成一次
 cons_2(i, n)                    同一时间同一个人最多只能做一个任务
-cons_3(i, j, n)                 修井人员满足技能需求
+*cons_3(i, j, n)                 修井人员满足技能需求
 cons_4(i, j, n)
 cons_5(i, jp, n)
-cons_6(i,j,jp,n1)
-cons_7(i,j,n2)
-cons_6_1(i,j,jp,n1)
-cons_7_1(i,j,n2)
-cons_8(i,jp)
-$ontext
-cons_9(i,j,n)
-cons_10(i,j,n)
-cons_11(i,j,jp,n)
-cons_12(i,j,jp,n)
-*cons_13(i,j,n2)
-*cons_14(i,j,jp,n1)
-$offtext
-cons_15(i,j,jp,n)
-cons_16(i,j,jp,n)
-*cons_17(i,j,jp,n1)
-*cons_18(i,j,n2)
+cons_6(i,n1)
+cons_7(i,n2)
+cons_6_1(i,n1)
+cons_7_1(i,n2)
+cons_8(i)
+cons_9(j3)
+cons_15(i,n)
+cons_15_1(i,n)
+cons_15_2(i,n)
 cons_AX_1(i,j,n)
 cons_AX_2(i,j,n)
 cons_AX_3(i,j,n)
-cons_BX_1(i,j,jp,n)
-cons_BX_2(i,j,jp,n)
-cons_BX_3(i,j,jp,n)
-cons_BXS_1(i,j,n)
-cons_BXS_2(i,j,n)
-cons_BXS_3(i,j,n)
-cons_19(i)
+cons_21(i,n2)
+cons_22(i)
+cons_22_1(i,n2)
+cons_22_2(i,n2)
+cons_22_3(i,n2)
+cons_22_4(i,n2)
+cons_22_5(i,n2)
+cons_25(i)
 obj;
 
-*（1）
-*cons_1(jp)$(ord(jp) ne 1).. sum((i, j, t), X(i, j, jp, t))=e=1;
-cons_1(j).. sum((i, n2), XS(i, j, n2))=g=1;
-*（2）
+cons_1(j)$(ord(j) ne 1 and ord(j) ne 2).. sum((i, n2), XS(i, j, n2))=l=1;
 cons_2(i, n).. sum(j, XS(i, j, n)) =l= 1;
-*（3）
-cons_3(i, j, n)..  XS(i, j, n) * (PL(i) - TL(j)) =l= 0;
-
-*cons_4(i, j, n)$(ord(n) le Nmax-1)..  XS(i, j, n)*(XS(i, j, n)-XS(i, j, n+1))=e=sum(jp, X(i, j, jp, n+1));
+*cons_3(i, j, n)..  XS(i, j, n) * (PL(i) - TL(j)) =l= 0;
 cons_4(i, j, n)$(ord(n) le Nmax-1)..  XS(i, j, n)-AXS(i,j,n)=e=sum(jp, X(i, j, jp, n+1));
-*cons_5(i, jp, n)$(ord(n) ge 2 and ord(jp) ne 1)..   sum(j, X(i, j, jp, n-1))=e=XS(i, jp, n)*(XS(i, jp, n)-XS(i, jp, n-1));
 cons_5(i, jp, n)$(ord(n) ge 2 and ord(jp) ne 1)..   sum(j, X(i, j, jp, n-1))=e=XS(i, jp, n)-AXS(i,jp,n-1);
-
-cons_6(i,j,jp,n1)$(ord(n1) ge 1)..    0=l=TTf(i,j,jp,n1)-TTs(i,j,jp,n1)-Tjj(j,jp)*X(i,j,jp,n1) ;
-cons_6_1(i,j,jp,n1)$(ord(n1) ge 1)..  TTf(i,j,jp,n1)-TTs(i,j,jp,n1)-Tjj(j,jp)*X(i,j,jp,n1)=l=BX(i,j,jp,n1);
-cons_7(i,j,n2)$(ord(n2) ge 1)..       0=l=Tf(i,j,n2)-Ts(i,j,n2)-Tij(i,j)*XS(i,j,n2);
-cons_7_1(i,j,n2)$(ord(n2) ge 1)..     Tf(i,j,n2)-Ts(i,j,n2)-Tij(i,j)*XS(i,j,n2)=l=BXS(i,j,n2);
-*cons_8(i).. sum((j,n),X(i,j,'AS00-0',n))=l=1;
-cons_8(i,jp)$(ord(jp) eq 1).. sum((j,n),X(i,j,jp,n))=l=1;
-
-$ontext
-cons_9(i,j,n).. Ts(i,j,n)=g=0;
-cons_10(i,j,n).. Tf(i,j,n)=g=0;
-cons_11(i,j,jp,n)..  TTs(i,j,jp,n)=g=0;
-cons_12(i,j,jp,n)..  TTf(i,j,jp,n)=g=0;
-*cons_13(i,j,n2)$(ord(n2) ge 2)..  Tf(i,j,n2)=g=Tf(i,j,n2-2);
-*cons_14(i,j,jp,n1)$(ord(n1) ge 2).. TTf(i,j,jp,n1)=g=TTf(i,j,jp,n1-2);
-$offtext
-cons_15(i,j,jp,n)..Tf(i,j,n-1)=l=TTs(i,j,jp,n)+H*(1-X(i,j,jp,n));
-cons_16(i,j,jp,n)..Ts(i,jp,n+1)=g=TTf(i,j,jp,n)-H*(1-X(i,j,jp,n));
-*cons_17(i,j,jp,n1).. (1-X(i,j,jp,n1))*TTf(i,j,jp,n1)=l=0;
-*cons_18(i,j,n2)..(1-XS(i,j,n2))*Tf(i,j,n2)=l=0;
-
+cons_6(i,n1)$(ord(n1) ge 1)..   Tf(i,n1)-Ts(i,n1)-sum((j,jp),Tjj(j,jp)*X(i,j,jp,n1))=l=0;
+cons_6_1(i,n1)$(ord(n1) ge 1)..   Tf(i,n1)-Ts(i,n1)-sum((j,jp),Tjj(j,jp)*X(i,j,jp,n1))=g=0;
+cons_7(i,n2)$(ord(n2) ge 1 )..        Tf(i,n2)-Ts(i,n2)-sum(j,Tij(i,j)*XS(i,j,n2))=l=0;
+cons_7_1(i,n2)$(ord(n2) ge 1 )..        Tf(i,n2)-Ts(i,n2)-sum(j,Tij(i,j)*XS(i,j,n2))=g=0;
+cons_8(i).. sum((j,n),X(i,j,'AS00-0',n))=l=1;
+cons_9(j3).. sum((i, n2), XS(i, j3, n2))=e=1;
+cons_15(i,n)$(ord(n) ge 2).. Tf(i,n-1)=l=Ts(i,n);
+cons_15_1(i,n)..  Ts(i,n)=l=H;
+cons_15_2(i,n)..  Tf(i,n)=l=H;
+cons_25(i)..  sum(n2$(ord(n2) ge 3),XS(i,'AS0-0',n2))=g=1;
+cons_22(i)..       BL=g=sum(n2,XS11(i,'AS0-0',n2));
+cons_22_1(i,n2)..  XS11(i,'AS0-0',n2)=l=XS(i,'AS0-0',n2)*H  ;
+cons_22_2(i,n2)..  XS21(i,'AS0-0',n2)=l=(1-XS(i,'AS0-0',n2))*H  ;
+cons_22_3(i,n2)..  XS21(i,'AS0-0',n2)=g=0  ;
+cons_22_4(i,n2)..  XS11(i,'AS0-0',n2)=g=0  ;
+cons_22_5(i,n2)..  XS21(i,'AS0-0',n2)+ XS11(i,'AS0-0',n2)=e=Ts(i,n2);
+cons_21(i,n2)..       XS(i,'AS0-0',n2)*BU=l=Tf(i,n2);
 cons_AX_1(i,j,n).. AXS(i,j,n)=l=XS(i,j,n);
 cons_AX_2(i,j,n)$(ord(n) le Nmax-1).. AXS(i,j,n)=l=XS(i,j,n+1);
 cons_AX_3(i,j,n)$(ord(n) le Nmax-1).. AXS(i,j,n)=g=XS(i,j,n)+XS(i,j,n+1)-1;
-cons_BX_1(i,j,jp,n).. BX(i,j,jp,n)=l=X(i,j,jp,n);
-cons_BX_2(i,j,jp,n).. BX(i,j,jp,n)=l=1-X(i,j,jp,n);
-cons_BX_3(i,j,jp,n).. BX(i,j,jp,n)=g=0;
-cons_BXS_1(i,j,n).. BXS(i,j,n)=l=XS(i,j,n);
-cons_BXS_2(i,j,n).. BXS(i,j,n)=l=1-XS(i,j,n);
-cons_BXS_3(i,j,n).. BXS(i,j,n)=g=0;
-*cons_19(j,n)$(ord(j) ne 1).. sum(i,XS(i,j,n))=l=1;
-cons_19(i)..      sum(( j, n2)$(ord(j) ne 1),Tij(i,j)* XS(i, j, n2))+sum((j, jp, n1), Tjj(j,jp)*X(i, j, jp, n1))=l=480;
 
-obj.. cost =e= sum((i, j, n2),Tij(i,j)* XS(i, j, n2))+sum((i, j, jp, n1), Tjj(j,jp)*X(i, j, jp, n1));
-*obj.. cost =e= sum((i, j, n2)$(ord(j) ne 1), Tf(i,j,n2)-Ts(i,j,n2))+sum((i, j, jp, n1), TTf(i,j,jp,n1)-TTs(i,j,jp,n1));
+obj.. cost =e=(-1)*sum((i,j2,n2),XS(i,j2,n2))+ 0.001*(sum((i,j2,j2p,n1),Tjj(j2,j2p)*X(i,j2,j2p,n1)));
 
 Model test /all/;
 
 *设置初值和终值
-XS.fx(i, j, '0')$(ord(j) eq 1)=1 ;
+XS.fx(i, 'AS00-0', '0')=1 ;
 XS.fx(i, j, n1)=0;
-XS.fx(i, j, n)$(ord(j) eq 1 and ord(n) eq Nmax-1)=1 ;
+*XS.fx(i, 'AS00-0', '18')=1 ;
+XS.fx(i, 'AS00-0', n)$(ord(n) eq Nmax)=1;
 X.fx(i,j,j,n)=0;
 X.fx(i,j,jp,n2)=0;
-
-
+*TS.l(i,n)=0;
+*Tf.l(i,n)=0;
+*TS.up(i,n)=500;
+*Tf.up(i,n)=500;
 option limrow=1000;
-option threads=2;
-option decimals=0; 
+option threads=4;
 option mip=cplex;
-option reslim=20000;
-
+*option minlp=bonmin;
+option decimals=0;
+option reslim=10000;
+option optcr=0.15;
 Solve test minimizing cost using mip;
 
-Display  XS.l, X.l,Ts.l,Tf.l,TTs.l,TTf.l;
+Display  XS.l, X.l,Ts.l,Tf.l;
 
 Display cost.l;
-Execute_Unload 'filename.gdx', Ts,TTs;
+Execute_Unload 'filename.gdx', Ts,Tf;
 Execute 'Gdxxrw.exe filename.gdx O = test1.xls var = Ts = Excel spreadsheet!';
-Execute 'Gdxxrw.exe filename.gdx O = test2.xls var = TTs = Excel spreadsheet!';
+Execute 'Gdxxrw.exe filename.gdx O = test2.xls var = Tf = Excel spreadsheet!';
 ";
             #endregion
 
-            #region model2：修改后的模型
+            #region model2：存在紧急任务时运行此模型
             string model2 = @"
 Sets
-             n         time point         " + n0 + @"            
+             n         time point         " + n0 + @"
              n1(n)     odd  point         " + n1 + @"
              n2(n)     even point         " + n2 + @"
              j         all task           
@@ -556,7 +545,6 @@ Sets
              j3(j)     必须完成任务           
 
 alias(j, jp, jpp);
-
 
 
 Parameters   PL(i)       维修人员i拥有级别 PL(i)以上技能                      
@@ -651,7 +639,7 @@ cons_AX_1(i,j,n).. AXS(i,j,n)=l=XS(i,j,n);
 cons_AX_2(i,j,n)$(ord(n) le Nmax-1).. AXS(i,j,n)=l=XS(i,j,n+1);
 cons_AX_3(i,j,n)$(ord(n) le Nmax-1).. AXS(i,j,n)=g=XS(i,j,n)+XS(i,j,n+1)-1;
 
-obj.. cost =e=(-0.999)*sum((i,j2,n2),XS(i,j2,n2))+sum((i,j1,n),ord(n)*XS(i,j1,n))+(sum((i,n2),Ts(i,n2)))*0.001;
+obj.. cost =e=(-1)*sum((i,j2,n2),XS(i,j2,n2))+sum((i,j1,n),ord(n)*XS(i,j1,n))+(sum((i,n2),Ts(i,n2)))*0.001;
 
 Model test /all/;
 
@@ -672,7 +660,7 @@ option mip=cplex;
 *option minlp=bonmin;
 option decimals=0;
 option reslim=10000;
-option optcr=0.3;
+option optcr=0.15;
 Solve test minimizing cost using mip;
 
 Display  XS.l, X.l,Ts.l,Tf.l;
@@ -684,7 +672,15 @@ Execute 'Gdxxrw.exe filename.gdx O = test2.xls var = Tf = Excel spreadsheet!';
 ";
             #endregion
 
-            return model2;
+            //TODO:
+            if (!hasPriorityOne)
+            {
+                return model1;
+            }
+            else
+            {
+                return model2;
+            }
         }
     }
 }

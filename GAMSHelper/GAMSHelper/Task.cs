@@ -12,5 +12,6 @@ namespace GAMSHelper
         public List<string> p_skill_level = new List<string>();
         public List<string> task_id = new List<string>();
         public List<string> t_skill_level = new List<string>();
+        public List<string> t_priority = new List<string>();
     }
 }

@@ -42,17 +42,27 @@ namespace GAMSHelper
         /// The password
         /// </summary>
         private string pwd = null;
+        /// <summary>
+        /// The model n
+        /// </summary>
         private int model_n = 0;    //模型中的n（n1、n2）值
 
+        /// <summary>
+        /// The patrol
+        /// </summary>
         public Patrol patrol = new Patrol();
 
+        /// <summary>
+        /// Gets the model n.
+        /// </summary>
+        /// <value>The model n.</value>
         public int Model_N
         {
             get { return model_n; }
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="SQLConnect"/> class.
+        /// Initializes a new instance of the <see cref="SQLConnect" /> class.
         /// </summary>
         /// <param name="str_server">The str_server.</param>
         /// <param name="str_database">The str_database.</param>
@@ -67,10 +77,14 @@ namespace GAMSHelper
         }
 
         /// <summary>
-        /// Finalizes an instance of the <see cref="SQLConnect"/> class.
+        /// Finalizes an instance of the <see cref="SQLConnect" /> class.
         /// </summary>
         ~SQLConnect() { }
 
+        /// <summary>
+        /// Datas the pretreatment.
+        /// </summary>
+        /// <returns>List&lt;System.String&gt;[].</returns>
         public List<string>[] DataPretreatment()
         {
             List<string> Pi1 = new List<string>();
@@ -170,6 +184,7 @@ namespace GAMSHelper
 
                             patrol.task_id.Add(String.Format("{0}-{1}", item, i));
                             patrol.t_skill_level.Add(level[0].ToString());
+                            patrol.t_priority.Add(i.ToString());
                         }
                     }
                 }
@@ -356,6 +371,7 @@ namespace GAMSHelper
                     string priority = rd2["TASK_PRIORITY"].ToString();
                     patrol.task_id.Add(taskId);
                     patrol.t_skill_level.Add(skillLevel);
+                    patrol.t_priority.Add(priority);
                     TLi1.Add(taskId);
                     TLi2.Add(skillLevel);
                     TLi3.Add(priority);
@@ -438,9 +454,11 @@ namespace GAMSHelper
             return listData;
         }
 
-        /// <summary>Gets the high level person identifier from SQL.</summary>
+        /// <summary>
+        /// Gets the high level person identifier from SQL.
+        /// </summary>
         /// <param name="command1">The command1.</param>
-        /// <returns></returns>
+        /// <returns>List&lt;System.String&gt;.</returns>
         public List<string> GetHighLevelPersonIDFromSQL(string command1)
         {
             List<string> personID = new List<string>();
@@ -469,9 +487,11 @@ namespace GAMSHelper
             return personID;
         }
 
-        /// <summary>Gets the person position identifier from SQL.</summary>
+        /// <summary>
+        /// Gets the person position identifier from SQL.
+        /// </summary>
         /// <param name="command2">The command2.</param>
-        /// <returns></returns>
+        /// <returns>List&lt;System.String&gt;[].</returns>
         public List<string>[] GetPersonPositionIDFromSQL(string command2)
         {
             List<string> personID = new List<string>();
@@ -505,6 +525,13 @@ namespace GAMSHelper
             return listData;
         }
 
+        /// <summary>
+        /// Gets the position spend time from SQL.
+        /// </summary>
+        /// <param name="tableName">Name of the table.</param>
+        /// <param name="startPosition">The start position.</param>
+        /// <param name="endPosition">The end position.</param>
+        /// <returns>List&lt;System.Int32&gt;.</returns>
         public List<int> GetPositionSpendTimeFromSQL(string tableName, List<string> startPosition, string endPosition)
         {
             List<int> spendTime = new List<int>();
@@ -537,6 +564,11 @@ namespace GAMSHelper
             return spendTime;
         }
 
+        /// <summary>
+        /// Gets the person task list from SQL.
+        /// </summary>
+        /// <param name="personID">The person identifier.</param>
+        /// <returns>List&lt;System.String&gt;[].</returns>
         public List<string>[] GetPersonTaskListFromSQL(string personID)
         {
             List<string> taskID = new List<string>();
@@ -567,6 +599,11 @@ namespace GAMSHelper
             return p_taskList;
         }
 
+        /// <summary>
+        /// Updates the task time to SQL.
+        /// </summary>
+        /// <param name="personID">The person identifier.</param>
+        /// <param name="newPersonTaskList">The new person task list.</param>
         public void UpdateTaskTimeToSQL(string personID, List<string>[] newPersonTaskList)
         {
             SqlConnection myconnect;
@@ -593,8 +630,11 @@ namespace GAMSHelper
             }
         }
 
-        /// <summary>Sends the data to SQL.</summary>
+        /// <summary>
+        /// Sends the data to SQL.
+        /// </summary>
         /// <param name="resultData">The result data.</param>
+        /// <param name="associatedTask">The associated task.</param>
         /// <param name="time">The time.</param>
         /// <returns>System.String.</returns>
         //public string SendDataToSQL(List<string>[] resultData)
@@ -693,8 +733,11 @@ namespace GAMSHelper
 
                 for (int i = 0; i < resultData[0].Count; i++)
                 {
-                    int level1 = Convert.ToInt32(resultData[2][i]);
-                    int level2 = Convert.ToInt32(resultData[5][i]);
+                    //int level1 = Convert.ToInt32(resultData[2][i]);
+                    //int level2 = Convert.ToInt32(resultData[5][i]);
+                    //求解结果里面的时间（level）可能有小数
+                    int level1 = Convert.ToInt32(Math.Ceiling(Convert.ToDouble(resultData[2][i])));
+                    int level2 = Convert.ToInt32(Math.Ceiling(Convert.ToDouble(resultData[5][i])));
 
                     //起始时间
                     string[] t = time.Split(':');
@@ -708,7 +751,7 @@ namespace GAMSHelper
                     mycomm3.ExecuteNonQuery();
                 }
                 myconnect.Close();
-            }
+        }
             catch (Exception ex)
             {
                 throw ex;
@@ -725,6 +768,12 @@ namespace GAMSHelper
             return tableName;
         }
 
+        /// <summary>
+        /// Gets the task time from SQL.
+        /// </summary>
+        /// <param name="tableName">Name of the table.</param>
+        /// <param name="XS">The xs.</param>
+        /// <returns>List&lt;System.String&gt;[].</returns>
         private List<string>[] GetTaskTimeFromSQL(string tableName,List<string>[] XS)
         {
             List<string> PERSON_ID = new List<string>();
@@ -767,6 +816,13 @@ namespace GAMSHelper
             return listData;
         }
 
+        /// <summary>
+        /// Gets the start and end time from SQL.
+        /// </summary>
+        /// <param name="tableName">Name of the table.</param>
+        /// <param name="Pid">The pid.</param>
+        /// <param name="order">The order.</param>
+        /// <returns>System.String[].</returns>
         private string[] GetStartAndEndTimeFromSQL(string tableName,string Pid, int order)
         {
             string[] time = new string[2];
@@ -911,6 +967,7 @@ namespace GAMSHelper
         /// </summary>
         /// <param name="tableName">Name of the table.</param>
         /// <param name="listTask">The list task.</param>
+        /// <param name="associatedTask">The associated task.</param>
         private void SendTaskTimeToSQL(string tableName, List<string>[] listTask, List<String>[] associatedTask)
         {
             SqlConnection myconnect;
@@ -924,12 +981,30 @@ namespace GAMSHelper
                 mycomm.ExecuteNonQuery();
                 for (int i = 0; i < listTask[0].Count; i++)
                 {
+                    //原始任务合并插入数据库
                     //string str = "insert into " + tableName + "(PERSON_ID ,TASK_ID,ORDER_NO,SPEND_TIME,START_TIME,END_TIME) values('" + listTask[0][i] + "','" + listTask[1][i] + "','" + listTask[2][i] + "','" + listTask[3][i] + "','" + listTask[4][i] + "','" + listTask[5][i] + "');";
+                    //int index = associatedTask[0].FindIndex(item => item.Equals(listTask[1][i]));
+                    //string oldTask = associatedTask[1][index];
+                    //string str = String.Format("insert into {0}(PERSON_ID ,TASK_ID,ORDER_NO,SPEND_TIME,START_TIME,END_TIME,ORIGIN_TASK_ID) values('{1}','{2}','{3}','{4}','{5}','{6}','{7}');", tableName,listTask[0][i], listTask[1][i], listTask[2][i],listTask[3][i],listTask[4][i],listTask[5][i], oldTask);
+                    //SqlCommand mycomm1 = new SqlCommand(str, myconnect);
+                    //mycomm1.ExecuteNonQuery();
+
+                    //原始任务分割插入数据库
                     int index = associatedTask[0].FindIndex(item => item.Equals(listTask[1][i]));
                     string oldTask = associatedTask[1][index];
-                    string str = String.Format("insert into {0}(PERSON_ID ,TASK_ID,ORDER_NO,SPEND_TIME,START_TIME,END_TIME,ORIGIN_TASK_ID) values('{1}','{2}','{3}','{4}','{5}','{6}','{7}');", tableName,listTask[0][i], listTask[1][i], listTask[2][i],listTask[3][i],listTask[4][i],listTask[5][i], oldTask);
-                    SqlCommand mycomm1 = new SqlCommand(str, myconnect);
-                    mycomm1.ExecuteNonQuery();
+                    string[] ot = oldTask.Split(new char[] { '|' }, StringSplitOptions.RemoveEmptyEntries);
+                    string startTime = listTask[4][i];
+                    string endTime;
+                    foreach (string item in ot)
+                    {
+                        string spendTime = GetPersonTaskTime(listTask[0][i],item);  //从数据库查询花费时间
+                        endTime = AddMinutes(startTime, Convert.ToInt32(spendTime));
+                        string str = String.Format("insert into {0}(PERSON_ID ,TASK_ID,ORDER_NO,SPEND_TIME,START_TIME,END_TIME) values('{1}','{2}','{3}','{4}','{5}','{6}');", tableName, listTask[0][i], item, listTask[2][i], spendTime, startTime, endTime);
+                        SqlCommand mycomm1 = new SqlCommand(str, myconnect);
+                        mycomm1.ExecuteNonQuery();
+                        startTime = endTime;    //下一次的开始时间是本次的结束时间
+                    }
+                    
                 }
                 
                 myconnect.Close();
@@ -938,6 +1013,47 @@ namespace GAMSHelper
             {
                 throw ex;
             }
+        }
+
+        /// <summary>
+        /// Gets the person task time.
+        /// </summary>
+        /// <param name="personID">The person identifier.</param>
+        /// <param name="taskID">The task identifier.</param>
+        /// <returns>System.String.</returns>
+        private string GetPersonTaskTime(string personID, string taskID)
+        {
+            string conn = "server=" + server + ";database=" + database + ";user=" + user + ";pwd=" + pwd;
+            SqlConnection myconnect = new SqlConnection(conn);
+            myconnect.Open();
+            string spendTime = null;
+            try
+            {
+                string command = String.Format("select SPEND_TIME from IMS_PATROL_PERSON_TASK_TIME where PERSON_ID='{0}' and TASK_ID='{1}';", personID, taskID);
+                SqlCommand mycomm = new SqlCommand(command, myconnect);
+                spendTime = mycomm.ExecuteScalar().ToString();
+                myconnect.Close();
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+            return spendTime;
+        }
+
+        /// <summary>
+        /// Adds the minutes.
+        /// </summary>
+        /// <param name="t">The t.</param>
+        /// <param name="interval">The interval.</param>
+        /// <returns>System.String.</returns>
+        private string AddMinutes(string t, int interval)
+        {
+            DateTime ts = Convert.ToDateTime(t);
+            DateTime te = ts.AddMinutes(interval);
+            string str_te = te.ToString();
+
+            return str_te;
         }
     }
 }
