@@ -981,7 +981,7 @@ namespace GAMSHelper
                 mycomm.ExecuteNonQuery();
                 for (int i = 0; i < listTask[0].Count; i++)
                 {
-                    //原始任务合并插入数据库
+                    //原始任务合并插入数据库(以前)
                     //string str = "insert into " + tableName + "(PERSON_ID ,TASK_ID,ORDER_NO,SPEND_TIME,START_TIME,END_TIME) values('" + listTask[0][i] + "','" + listTask[1][i] + "','" + listTask[2][i] + "','" + listTask[3][i] + "','" + listTask[4][i] + "','" + listTask[5][i] + "');";
                     //int index = associatedTask[0].FindIndex(item => item.Equals(listTask[1][i]));
                     //string oldTask = associatedTask[1][index];
@@ -989,22 +989,33 @@ namespace GAMSHelper
                     //SqlCommand mycomm1 = new SqlCommand(str, myconnect);
                     //mycomm1.ExecuteNonQuery();
 
-                    //原始任务分割插入数据库
+                    //原始任务分割插入数据库（修改）
                     int index = associatedTask[0].FindIndex(item => item.Equals(listTask[1][i]));
                     string oldTask = associatedTask[1][index];
                     string[] ot = oldTask.Split(new char[] { '|' }, StringSplitOptions.RemoveEmptyEntries);
-                    string startTime = listTask[4][i];
-                    string endTime;
-                    foreach (string item in ot)
+                    //string startTime = listTask[4][i];
+                    //string endTime;
+                    //foreach (string item in ot)
+                    //{
+                    //    string spendTime = GetPersonTaskTime(listTask[0][i],item);  //从数据库查询花费时间
+                    //    endTime = ot.Length > 1 ? AddMinutes(startTime, Convert.ToInt32(spendTime)) : listTask[5][i];   //结束时间判断
+                    //    string str = String.Format("insert into {0}(PERSON_ID ,TASK_ID,ORDER_NO,SPEND_TIME,START_TIME,END_TIME) values('{1}','{2}','{3}','{4}','{5}','{6}');", tableName, listTask[0][i], item, listTask[2][i], spendTime, startTime, endTime);
+                    //    SqlCommand mycomm1 = new SqlCommand(str, myconnect);
+                    //    mycomm1.ExecuteNonQuery();
+                    //    startTime = endTime;    //下一次的开始时间是本次的结束时间
+                    //}
+                    string startTime;
+                    string endTime = listTask[5][i];
+                    for (int j = 0; j < ot.Length; j++)
                     {
-                        string spendTime = GetPersonTaskTime(listTask[0][i],item);  //从数据库查询花费时间
-                        endTime = AddMinutes(startTime, Convert.ToInt32(spendTime));
+                        string item = ot[j];
+                        string spendTime = GetPersonTaskTime(listTask[0][i], item);  //从数据库查询花费时间
+                        startTime = j < ot.Length - 1 ? ReduceMinutes(endTime, Convert.ToInt32(spendTime)) : listTask[4][i];   //开始时间判断
                         string str = String.Format("insert into {0}(PERSON_ID ,TASK_ID,ORDER_NO,SPEND_TIME,START_TIME,END_TIME) values('{1}','{2}','{3}','{4}','{5}','{6}');", tableName, listTask[0][i], item, listTask[2][i], spendTime, startTime, endTime);
                         SqlCommand mycomm1 = new SqlCommand(str, myconnect);
                         mycomm1.ExecuteNonQuery();
-                        startTime = endTime;    //下一次的开始时间是本次的结束时间
+                        endTime = startTime;    //上一次的结束时间是本次的开始时间
                     }
-                    
                 }
                 
                 myconnect.Close();
@@ -1051,6 +1062,21 @@ namespace GAMSHelper
         {
             DateTime ts = Convert.ToDateTime(t);
             DateTime te = ts.AddMinutes(interval);
+            string str_te = te.ToString();
+
+            return str_te;
+        }
+
+        /// <summary>
+        /// Reduces the minutes.
+        /// </summary>
+        /// <param name="t">The time string.</param>
+        /// <param name="interval">The interval.</param>
+        /// <returns>System.String.</returns>
+        private string ReduceMinutes(string t, int interval)
+        {
+            DateTime ts = Convert.ToDateTime(t);
+            DateTime te = ts.AddMinutes(-interval);
             string str_te = te.ToString();
 
             return str_te;
