@@ -456,6 +456,7 @@ cons_7(i,n2)
 cons_6_1(i,n1)
 cons_7_1(i,n2)
 cons_8(i)
+cons_8_1(i)
 cons_9(j3)
 cons_15(i,n)
 cons_15_1(i,n)
@@ -483,6 +484,7 @@ cons_6_1(i,n1)$(ord(n1) ge 1)..   Tf(i,n1)-Ts(i,n1)-sum((j,jp),Tjj(j,jp)*X(i,j,j
 cons_7(i,n2)$(ord(n2) ge 1 )..        Tf(i,n2)-Ts(i,n2)-sum(j,Tij(i,j)*XS(i,j,n2))=l=0;
 cons_7_1(i,n2)$(ord(n2) ge 1 )..        Tf(i,n2)-Ts(i,n2)-sum(j,Tij(i,j)*XS(i,j,n2))=g=0;
 cons_8(i).. sum((j,n),X(i,j,'AS00-0',n))=l=1;
+cons_8_1(i).. sum((j,n),X(i,'AS0-0',j,n))=l=1;
 cons_9(j3).. sum((i, n2), XS(i, j3, n2))=e=1;
 cons_15(i,n)$(ord(n) ge 2).. Tf(i,n-1)=l=Ts(i,n);
 cons_15_1(i,n)..  Ts(i,n)=l=H;
@@ -545,7 +547,7 @@ Sets
              j3(j)     必须完成任务           
 
 alias(j, jp, jpp);
-
+alias(j2, j2p);
 
 Parameters   PL(i)       维修人员i拥有级别 PL(i)以上技能                      
              TL(j)       任务j所需技能
@@ -596,6 +598,7 @@ cons_7(i,n2)
 cons_6_1(i,n1)
 cons_7_1(i,n2)
 cons_8(i)
+cons_8_1(i)
 cons_9(j3)
 cons_15(i,n)
 cons_15_1(i,n)
@@ -622,6 +625,7 @@ cons_6(i,n1)$(ord(n1) ge 1)..   Tf(i,n1)-Ts(i,n1)-sum((j,jp),Tjj(j,jp)*X(i,j,jp,
 cons_6_1(i,n1)$(ord(n1) ge 1)..   Tf(i,n1)-Ts(i,n1)-sum((j,jp),Tjj(j,jp)*X(i,j,jp,n1))=g=0;
 cons_7(i,n2)$(ord(n2) ge 1 )..        Tf(i,n2)-Ts(i,n2)-sum(j,Tij(i,j)*XS(i,j,n2))=l=0;
 cons_7_1(i,n2)$(ord(n2) ge 1 )..        Tf(i,n2)-Ts(i,n2)-sum(j,Tij(i,j)*XS(i,j,n2))=g=0;
+cons_8_1(i).. sum((j,n),X(i,'AS0-0',j,n))=l=1;
 cons_8(i).. sum((j,n),X(i,j,'AS00-0',n))=l=1;
 cons_9(j3).. sum((i, n2), XS(i, j3, n2))=e=1;
 cons_15(i,n)$(ord(n) ge 2).. Tf(i,n-1)=l=Ts(i,n);
@@ -639,7 +643,7 @@ cons_AX_1(i,j,n).. AXS(i,j,n)=l=XS(i,j,n);
 cons_AX_2(i,j,n)$(ord(n) le Nmax-1).. AXS(i,j,n)=l=XS(i,j,n+1);
 cons_AX_3(i,j,n)$(ord(n) le Nmax-1).. AXS(i,j,n)=g=XS(i,j,n)+XS(i,j,n+1)-1;
 
-obj.. cost =e=(-1)*sum((i,j2,n2),XS(i,j2,n2))+sum((i,j1,n),ord(n)*XS(i,j1,n))+(sum((i,n2),Ts(i,n2)))*0.001;
+obj.. cost =e=(-1)*sum((i,j2,n2),XS(i,j2,n2))+sum((i,j1,n),ord(n)*XS(i,j1,n))+0.001*(sum((i,j2,n2),Tij(i,j2)*XS(i,j2,n2))+sum((i,j2,j2p,n1),Tjj(j2,j2p)*X(i,j2,j2p,n1)));;
 
 Model test /all/;
 
@@ -660,7 +664,7 @@ option mip=cplex;
 *option minlp=bonmin;
 option decimals=0;
 option reslim=10000;
-option optcr=0.15;
+option optcr=0.3;
 Solve test minimizing cost using mip;
 
 Display  XS.l, X.l,Ts.l,Tf.l;
