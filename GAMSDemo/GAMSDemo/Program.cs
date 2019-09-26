@@ -55,7 +55,7 @@ namespace GAMSDemo
                 //command3 = "select * from IMS_PATROL_PERSON_TASK_TIME;";
                 //command4 = "select * from IMS_PATROL_TASK_SPEND_TIME;";
                 time = "8:30";
-                debug = "NONE";
+                debug = "LOG";
 
                 //紧急任务参数
                 command5 = "select PERSON_ID from IMS_PATROL_PERSON_ON_DUTY where SKILL_LEVEL<=2;";
@@ -80,7 +80,7 @@ namespace GAMSDemo
                     return;
                 }
             }
-            else if(args.Length == 9) //紧急任务处理传递9个参数
+            else if (args.Length == 9) //紧急任务处理传递9个参数
             {
                 server = args[0];
                 database = args[1];
@@ -153,7 +153,7 @@ namespace GAMSDemo
 
                     TimeSpan td = startDT.Subtract(tstart);
                     double timeInterval = td.TotalMinutes;
-                    if ((timeInterval > 0)&&(timeInterval < Convert.ToDouble(personTaskList[1][i])))
+                    if ((timeInterval > 0) && (timeInterval < Convert.ToDouble(personTaskList[1][i])))
                     {
                         if (startDT.AddMinutes(minTime) < restStartTime)
                         {
@@ -180,7 +180,7 @@ namespace GAMSDemo
                 newPersonTaskList[2].Add(taskStartTime);
                 newPersonTaskList[3].Add(AddMinutes(taskStartTime, minTime));
 
-                for (int i = 1; i < count-t_index; i++)
+                for (int i = 1; i < count - t_index; i++)
                 {
                     newPersonTaskList[0].Add(personTaskList[0][t_index + i]);
                     newPersonTaskList[1].Add(personTaskList[1][t_index + i]);
@@ -202,26 +202,35 @@ namespace GAMSDemo
                 Console.WriteLine(workPath);
 
                 //运行GAMS模型
-                GAMSModel gModel = new GAMSModel(workPath); //GAMS运行模型的工作区，会在此文件夹生成相关调试过程文件
-                gModel.Model_N = scon.Model_N;
-                gModel.Work_Start_Time = time;
-                List<string>[] listData = new List<string>[11];
-                Array.Copy(dataBaseData, 0, listData, 0, listData.Length);
-                List<string>[] resultData = gModel.Run(listData);   //这里只用到listData的前10个数据。运行GAMS模型，得到运行结果
+                GAMSModel gModel = new GAMSModel(workPath)
+                {
+                    Model_N = scon.Model_N,
+                    Work_Start_Time = time,
+                    conn = "server=" + server + ";database=" + database + ";user=" + user + ";pwd=" + pwd
+                }; //GAMS运行模型的工作区，会在此文件夹生成相关调试过程文件
+
+                List<string>[] listData = new List<string>[12];
+                Array.Copy(dataBaseData, 0, listData, 0, listData.Length);  //listData的前12个数据
+                List<string>[] resultData = gModel.Run(listData);   //运行GAMS模型，得到运行结果
+
+                List<string>[] listTask = new List<string>[3];
+                Array.Copy(dataBaseData, 11, listTask, 0, listTask.Length); //listData的后3个数据
+
+                List<string>[] associatedTask = RefactorAssociatedTask(listTask);   //这里发现listTask、dataBaseData的值已经改变了，
+                                                                                    //可能是 dataBaseData是指向地址的地址，Array.Copy拷贝的是地址，只是一个引用
 
                 //将模型运行的最终结果存进数据库
-                List<string>[] listTask = new List<string>[2];
-                Array.Copy(dataBaseData, 11, listTask, 0, listTask.Length);
-                string tableName = scon.SendDataToSQL(resultData, listTask, time);
+                string tableName = scon.SendDataToSQL(resultData, associatedTask, time);
                 Console.WriteLine("求解完毕,求解结果保存在" + tableName);
 
                 //开启日志记录
                 if (debug == "LOG")
                 {
-                    string fileName = workPath + @"\Log.txt";
-                    Log("-----"+ startDT.ToString() + "-----", fileName);
+                    string fileName = workPath + @"\Log.csv";
+                    Log("-----" + startDT.ToString() + "-----", fileName);
                     Log(dataBaseData, fileName);
                     Log(resultData, fileName);
+                    Log(associatedTask, fileName);
                 }
             }
 
@@ -230,6 +239,30 @@ namespace GAMSDemo
                 TimeSpan ts = afterDT.Subtract(startDT);
                 Console.WriteLine("求解总共花费{0:0.0}min.", ts.TotalMinutes);
             }
+        }
+
+        private static List<string>[] RefactorAssociatedTask(List<string>[] listTask)
+        {
+            List<string> pointName = listTask[1];
+            List<string> oldTask = listTask[2];
+
+            foreach (string name in listTask[0])  //按井组号遍历，处理2、3的任务
+            {
+                int index1 = pointName.IndexOf(name + "-2"); //返回指定元素的第一个匹配项的索引，或者如果此列表中不包含该元素返回-1
+                int index2 = pointName.IndexOf(name + "-3");
+                if ((index1 != -1) && (index2 != -1))
+                {
+                    oldTask[index1] = oldTask[index1] + "|" + oldTask[index2];
+                    pointName.RemoveAt(index2);
+                    oldTask.RemoveAt(index2);
+                }
+            }
+
+            List<string>[] associatedTask = new List<string>[2];
+            associatedTask[0] = pointName;
+            associatedTask[1] = oldTask;
+
+            return associatedTask;
         }
 
         public static string AddMinutes(string t, int interval)

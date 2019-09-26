@@ -100,9 +100,10 @@ namespace GAMSHelper
 
             List<string> TLi3 = new List<string>(); //添加任务优先级
 
-            List<string> pointName = new List<string>(); //任务所属的井组，新的任务号
-            List<string> oldTask = new List<string>(); //任务间以 , 隔开
-
+            List<string> name = new List<string>(); //所有的井组，不含重复元素
+            List<string> pointName = new List<string>(); //任务所属的井组，构建的新的任务号
+            List<string> oldTask = new List<string>(); //任务间以 | 隔开
+            
             string conn = "server=" + server + ";database=" + database + ";user=" + user + ";pwd=" + pwd;
             SqlConnection myconnect;
             myconnect = new SqlConnection(conn);
@@ -143,7 +144,6 @@ namespace GAMSHelper
                 }
                 rd1.Close();
 
-                List<string> name = new List<string>(); //所有的井组，不含重复元素
                 foreach (string pn in pName)
                 {
                     if (!name.Contains(pn)) //剔除重复元素
@@ -168,14 +168,14 @@ namespace GAMSHelper
                         }
                         rd2.Close();
 
-                        if (level.Count > 0)
+                        if (level.Count > 0)    //此井组的相应优先级任务是否存在
                         {
                             string newTaskID = String.Format("{0}-{1}", item, i);
                             TLi1.Add(newTaskID); 
                             TLi3.Add(i.ToString());
 
-                            level.Sort();
-                            level.Reverse();
+                            level.Sort();   //升序
+                            level.Reverse();//反转
                             TLi2.Add(level[0].ToString());
                             
                             pointName.Add(newTaskID);
@@ -276,22 +276,28 @@ namespace GAMSHelper
 
             myconnect.Close();
 
-            int count = 13;
+            int count = 14;
             List<string>[] listData = new List<string>[count];
 
-            listData[0] = Pi1;
-            listData[1] = Pi2;
-            listData[2] = TLi1;
-            listData[3] = TLi2;
-            listData[4] = Tij1;
-            listData[5] = Tij2;
-            listData[6] = Tij3;
-            listData[7] = Tjj1;
-            listData[8] = Tjj2;
-            listData[9] = Tjj3;
-            listData[10] = TLi3; //任务的优先级
-            listData[11] = pointName;
-            listData[12] = oldTask;
+            listData[0] = Pi1;  //值班人员表：人员ID
+            listData[1] = Pi2;  //值班人员表：技能等级
+
+            listData[2] = TLi1; //合并后的任务ID
+            listData[3] = TLi2; //合并后的所需人员最低技能等级
+
+            listData[4] = Tij1; //人员ID
+            listData[5] = Tij2; //合并后的任务ID
+            listData[6] = Tij3; //完成任务的时间
+
+            listData[7] = Tjj1; //合并后的任务ID
+            listData[8] = Tjj2; //合并后的任务ID
+            listData[9] = Tjj3; //合并后的任务ID
+
+            listData[10] = TLi3; //合并后的任务优先级
+
+            listData[11] = name;    //所有井组（无重复）
+            listData[12] = pointName;//新的任务号
+            listData[13] = oldTask;  //合并任务号对应的原来的任务，任务间以 | 分隔
 
             int i1 = patrol.person_id.Count;  //人数
             int i2 = patrol.task_id.Count;    //任务数
@@ -307,7 +313,6 @@ namespace GAMSHelper
 
             return listData;
         }
-
         /// <summary>
         /// Gets the GAMS Model's data from SQL.
         /// </summary>
@@ -736,17 +741,18 @@ namespace GAMSHelper
                     //int level1 = Convert.ToInt32(resultData[2][i]);
                     //int level2 = Convert.ToInt32(resultData[5][i]);
                     //求解结果里面的时间（level）可能有小数
-                    int level1 = Convert.ToInt32(Math.Ceiling(Convert.ToDouble(resultData[2][i])));
-                    int level2 = Convert.ToInt32(Math.Ceiling(Convert.ToDouble(resultData[5][i])));
+                    int level1 = Convert.ToInt32(Math.Ceiling(Convert.ToDouble(resultData[2][i]))); //Ts_time
+                    int level2 = Convert.ToInt32(Math.Ceiling(Convert.ToDouble(resultData[5][i]))); //Tf_time
 
                     //起始时间
                     string[] t = time.Split(':');
                     int HH = Convert.ToInt32(t[0]);
                     int MM = Convert.ToInt32(t[1]);
                     DateTime startWorkTime = new DateTime(currentTime.Year, currentTime.Month, currentTime.Day, HH, MM, 0);
+
                     DateTime time1 = startWorkTime.AddMinutes(level1 - 1);
                     DateTime time2 = startWorkTime.AddMinutes(level2 - 1);
-
+                    
                     SqlCommand mycomm3 = new SqlCommand("insert into " + temporarytable + "(Pid,number,time1,time2) values('" + resultData[0][i] + "'," + Convert.ToInt32(resultData[1][i]) + ",'" + time1.ToString() + "','" + time2.ToString() + "');", myconnect);
                     mycomm3.ExecuteNonQuery();
                 }
@@ -757,7 +763,7 @@ namespace GAMSHelper
                 throw ex;
             }
 
-            string tableName = "IMS_PATROL_TASK_TIME";
+            string tableName = "IMS_PATROL_TASK_TIME";  //最终数据库
             List<string>[] XS = new List<string>[3];
             XS[0] = resultData[6];
             XS[1] = resultData[7];
@@ -781,6 +787,7 @@ namespace GAMSHelper
             List<string> ORDER_NO = new List<string>();
             List<string> SPEND_TIME = new List<string>();
             List<string> START_TIME = new List<string>();
+            List<string> BETWEEN_TIME = new List<string>();
             List<string> END_TIME = new List<string>();
 
             for (int i = 0; i < XS[0].Count; i++)
@@ -791,10 +798,11 @@ namespace GAMSHelper
 
                 string Pid = XS[0][i];
                 int order = Convert.ToInt32(XS[2][i]);
-                string[] time = GetStartAndEndTimeFromSQL(tableName, Pid, order);
+                string[] time = GetStartAndEndTimeFromSQL(tableName, Pid, order);   //从 GAMSresult 表获取任务起止时间
 
                 string startTime = time[0];
-                string endTime = time[1];
+                string betweenTime = time[1];
+                string endTime = time[2];
                 DateTime ts = Convert.ToDateTime(startTime);
                 DateTime te = Convert.ToDateTime(endTime);
                 TimeSpan td = te.Subtract(ts);
@@ -802,16 +810,18 @@ namespace GAMSHelper
 
                 SPEND_TIME.Add(spendTime.ToString());
                 START_TIME.Add(startTime);
+                BETWEEN_TIME.Add(betweenTime);
                 END_TIME.Add(endTime);
             }
 
-            List<string>[] listData = new List<string>[6];
+            List<string>[] listData = new List<string>[7];
             listData[0] = PERSON_ID;
             listData[1] = TASK_ID;
             listData[2] = ORDER_NO;
             listData[3] = SPEND_TIME;
             listData[4] = START_TIME;
-            listData[5] = END_TIME;
+            listData[5] = BETWEEN_TIME;
+            listData[6] = END_TIME;
 
             return listData;
         }
@@ -825,7 +835,7 @@ namespace GAMSHelper
         /// <returns>System.String[].</returns>
         private string[] GetStartAndEndTimeFromSQL(string tableName,string Pid, int order)
         {
-            string[] time = new string[2];
+            string[] time = new string[3];
 
             SqlConnection myconnect;
             string conn = "server=" + server + ";database=" + database + ";user=" + user + ";pwd=" + pwd + "";
@@ -834,20 +844,22 @@ namespace GAMSHelper
 
             try
             {
-                SqlCommand mycomm1 = new SqlCommand("SELECT * FROM " + tableName + " WHERE number=" + (order - 1) + " AND Pid='" + Pid + "';", myconnect);
-                SqlDataReader rd1 = mycomm1.ExecuteReader();
-                while (rd1.Read())
-                {
-                    time[0] = rd1["time1"].ToString();
-                    break;
-                }
-                rd1.Close();
+                SqlCommand mycomm1 = new SqlCommand("SELECT time1 FROM " + tableName + " WHERE number=" + (order - 1) + " AND Pid='" + Pid + "';", myconnect);
+                time[0] = mycomm1.ExecuteScalar().ToString();
+                //SqlDataReader rd1 = mycomm1.ExecuteReader();
+                //while (rd1.Read())
+                //{
+                //    time[0] = rd1["time1"].ToString();
+                //    break;
+                //}
+                //rd1.Close();
 
                 SqlCommand mycomm2 = new SqlCommand("SELECT * FROM " + tableName + " WHERE number=" + order + " AND Pid='" + Pid + "';", myconnect);
                 SqlDataReader rd2 = mycomm2.ExecuteReader();
                 while (rd2.Read())
                 {
-                    time[1] = rd2["time2"].ToString();
+                    time[1] = rd2["time1"].ToString();
+                    time[2] = rd2["time2"].ToString();
                     break;
                 }
                 rd2.Close();
@@ -867,100 +879,100 @@ namespace GAMSHelper
         /// </summary>
         /// <param name="tableName">Name of the table.</param>
         /// <returns>List&lt;System.String&gt;[].</returns>
-        private List<string>[] GetTaskTimeFromSQL(string tableName)
-        {
-            List<string>[] listData = new List<string>[6];
+        //private List<string>[] GetTaskTimeFromSQL(string tableName)
+        //{
+        //    List<string>[] listData = new List<string>[6];
 
-            List<string> PERSON_ID = new List<string>();
-            List<string> TASK_ID = new List<string>();
-            List<string> ORDER_NO = new List<string>();
-            List<string> SPEND_TIME = new List<string>();
-            List<string> START_TIME = new List<string>();
-            List<string> END_TIME = new List<string>();
+        //    List<string> PERSON_ID = new List<string>();
+        //    List<string> TASK_ID = new List<string>();
+        //    List<string> ORDER_NO = new List<string>();
+        //    List<string> SPEND_TIME = new List<string>();
+        //    List<string> START_TIME = new List<string>();
+        //    List<string> END_TIME = new List<string>();
 
-            SqlConnection myconnect;
-            string conn = "server=" + server + ";database=" + database + ";user=" + user + ";pwd=" + pwd + "";
-            myconnect = new SqlConnection(conn);
-            myconnect.Open();
+        //    SqlConnection myconnect;
+        //    string conn = "server=" + server + ";database=" + database + ";user=" + user + ";pwd=" + pwd + "";
+        //    myconnect = new SqlConnection(conn);
+        //    myconnect.Open();
 
-            int personNum = patrol.person_id.Count;
-            string[] pid = new string[personNum];
+        //    int personNum = patrol.person_id.Count;
+        //    string[] pid = new string[personNum];
 
-            for (int i = 0; i < personNum; i++)
-            {
-                //数据库查询
-                //pid[i] = "XJ00" + (i+1).ToString("00");
-                pid[i] = patrol.person_id[i];
+        //    for (int i = 0; i < personNum; i++)
+        //    {
+        //        //数据库查询
+        //        //pid[i] = "XJ00" + (i+1).ToString("00");
+        //        pid[i] = patrol.person_id[i];
 
-                SqlCommand mycomm = new SqlCommand("SELECT COUNT(*) AS pcount FROM " + tableName + " WHERE number!=0 AND Pid='" + pid[i] + "';", myconnect);
-                SqlDataReader rd = mycomm.ExecuteReader();
-                int queryNumber = 0;
-                if (rd.Read())
-                {
-                    queryNumber = Convert.ToInt32(rd["pcount"]);
-                    rd.Close();
-                    if (queryNumber == 0)
-                    {
-                        continue;
-                    }
-                }
+        //        SqlCommand mycomm = new SqlCommand("SELECT COUNT(*) AS pcount FROM " + tableName + " WHERE number!=0 AND Pid='" + pid[i] + "';", myconnect);
+        //        SqlDataReader rd = mycomm.ExecuteReader();
+        //        int queryNumber = 0;
+        //        if (rd.Read())
+        //        {
+        //            queryNumber = Convert.ToInt32(rd["pcount"]);
+        //            rd.Close();
+        //            if (queryNumber == 0)
+        //            {
+        //                continue;
+        //            }
+        //        }
                 
-                for (int j = 2; j < queryNumber; j=j+2)
-                {
-                    PERSON_ID.Add(pid[i]);
-                    ORDER_NO.Add(j.ToString());
+        //        for (int j = 2; j < queryNumber; j=j+2)
+        //        {
+        //            PERSON_ID.Add(pid[i]);
+        //            ORDER_NO.Add(j.ToString());
 
-                    SqlCommand mycomm1 = new SqlCommand("SELECT * FROM " + tableName + " WHERE id="+j.ToString
-                        ()+" AND number!=0 AND Pid='" + pid[i] + "' ORDER BY number ASC;", myconnect);
-                    SqlDataReader rd1 = mycomm1.ExecuteReader();
-                    while (rd1.Read())
-                    {
-                        TASK_ID.Add(rd1.GetValue(1).ToString());
-                        break;
-                    }
-                    rd1.Close();
+        //            SqlCommand mycomm1 = new SqlCommand("SELECT * FROM " + tableName + " WHERE id="+j.ToString
+        //                ()+" AND number!=0 AND Pid='" + pid[i] + "' ORDER BY number ASC;", myconnect);
+        //            SqlDataReader rd1 = mycomm1.ExecuteReader();
+        //            while (rd1.Read())
+        //            {
+        //                TASK_ID.Add(rd1.GetValue(1).ToString());
+        //                break;
+        //            }
+        //            rd1.Close();
 
-                    SqlCommand mycomm2 = new SqlCommand("SELECT * FROM " + tableName + " WHERE id=" + (j - 1).ToString
-                        () + " AND number!=0 AND Pid='" + pid[i] + "' ORDER BY number ASC;", myconnect);
-                    SqlDataReader rd2 = mycomm2.ExecuteReader();
-                    string startTime = null;
-                    if (rd2.Read())
-                    {
-                        startTime = rd2.GetValue(5).ToString();
-                    }
-                    START_TIME.Add(startTime);
-                    rd2.Close();
+        //            SqlCommand mycomm2 = new SqlCommand("SELECT * FROM " + tableName + " WHERE id=" + (j - 1).ToString
+        //                () + " AND number!=0 AND Pid='" + pid[i] + "' ORDER BY number ASC;", myconnect);
+        //            SqlDataReader rd2 = mycomm2.ExecuteReader();
+        //            string startTime = null;
+        //            if (rd2.Read())
+        //            {
+        //                startTime = rd2.GetValue(5).ToString();
+        //            }
+        //            START_TIME.Add(startTime);
+        //            rd2.Close();
 
-                    SqlCommand mycomm3 = new SqlCommand("SELECT * FROM " + tableName + " WHERE id=" + (j+1).ToString
-                        () + " AND number!=0 AND Pid='" + pid[i] + "' ORDER BY number ASC;", myconnect);
-                    SqlDataReader rd3 = mycomm3.ExecuteReader();
-                    string endTime = null;
-                    while (rd3.Read())
-                    {
-                        endTime = rd3.GetValue(5).ToString();
-                        break;
-                    }
-                    END_TIME.Add(endTime);
-                    rd3.Close();
+        //            SqlCommand mycomm3 = new SqlCommand("SELECT * FROM " + tableName + " WHERE id=" + (j+1).ToString
+        //                () + " AND number!=0 AND Pid='" + pid[i] + "' ORDER BY number ASC;", myconnect);
+        //            SqlDataReader rd3 = mycomm3.ExecuteReader();
+        //            string endTime = null;
+        //            while (rd3.Read())
+        //            {
+        //                endTime = rd3.GetValue(5).ToString();
+        //                break;
+        //            }
+        //            END_TIME.Add(endTime);
+        //            rd3.Close();
 
-                    DateTime ts = Convert.ToDateTime(startTime);
-                    DateTime te = Convert.ToDateTime(endTime);
-                    TimeSpan td = te.Subtract(ts);
-                    double spendTime = td.TotalMinutes;
+        //            DateTime ts = Convert.ToDateTime(startTime);
+        //            DateTime te = Convert.ToDateTime(endTime);
+        //            TimeSpan td = te.Subtract(ts);
+        //            double spendTime = td.TotalMinutes;
 
-                    SPEND_TIME.Add(spendTime.ToString());
-                }
-            }
+        //            SPEND_TIME.Add(spendTime.ToString());
+        //        }
+        //    }
             
-            listData[0] = PERSON_ID;
-            listData[1] = TASK_ID;
-            listData[2] = ORDER_NO;
-            listData[3] = SPEND_TIME;
-            listData[4] = START_TIME;
-            listData[5] = END_TIME;
+        //    listData[0] = PERSON_ID;
+        //    listData[1] = TASK_ID;
+        //    listData[2] = ORDER_NO;
+        //    listData[3] = SPEND_TIME;
+        //    listData[4] = START_TIME;
+        //    listData[5] = END_TIME;
 
-            return listData;
-        }
+        //    return listData;
+        //}
 
         /// <summary>
         /// Sends the task time to SQL.
@@ -981,43 +993,46 @@ namespace GAMSHelper
                 mycomm.ExecuteNonQuery();
                 for (int i = 0; i < listTask[0].Count; i++)
                 {
-                    //原始任务合并插入数据库(以前)
-                    //string str = "insert into " + tableName + "(PERSON_ID ,TASK_ID,ORDER_NO,SPEND_TIME,START_TIME,END_TIME) values('" + listTask[0][i] + "','" + listTask[1][i] + "','" + listTask[2][i] + "','" + listTask[3][i] + "','" + listTask[4][i] + "','" + listTask[5][i] + "');";
-                    //int index = associatedTask[0].FindIndex(item => item.Equals(listTask[1][i]));
-                    //string oldTask = associatedTask[1][index];
-                    //string str = String.Format("insert into {0}(PERSON_ID ,TASK_ID,ORDER_NO,SPEND_TIME,START_TIME,END_TIME,ORIGIN_TASK_ID) values('{1}','{2}','{3}','{4}','{5}','{6}','{7}');", tableName,listTask[0][i], listTask[1][i], listTask[2][i],listTask[3][i],listTask[4][i],listTask[5][i], oldTask);
-                    //SqlCommand mycomm1 = new SqlCommand(str, myconnect);
-                    //mycomm1.ExecuteNonQuery();
-
-                    //原始任务分割插入数据库（修改）
+                    //原始任务分割插入数据库
                     int index = associatedTask[0].FindIndex(item => item.Equals(listTask[1][i]));
                     string oldTask = associatedTask[1][index];
                     string[] ot = oldTask.Split(new char[] { '|' }, StringSplitOptions.RemoveEmptyEntries);
-                    //string startTime = listTask[4][i];
-                    //string endTime;
-                    //foreach (string item in ot)
-                    //{
-                    //    string spendTime = GetPersonTaskTime(listTask[0][i],item);  //从数据库查询花费时间
-                    //    endTime = ot.Length > 1 ? AddMinutes(startTime, Convert.ToInt32(spendTime)) : listTask[5][i];   //结束时间判断
-                    //    string str = String.Format("insert into {0}(PERSON_ID ,TASK_ID,ORDER_NO,SPEND_TIME,START_TIME,END_TIME) values('{1}','{2}','{3}','{4}','{5}','{6}');", tableName, listTask[0][i], item, listTask[2][i], spendTime, startTime, endTime);
-                    //    SqlCommand mycomm1 = new SqlCommand(str, myconnect);
-                    //    mycomm1.ExecuteNonQuery();
-                    //    startTime = endTime;    //下一次的开始时间是本次的结束时间
-                    //}
+
+                    string lastTaskId = null;
                     string startTime;
-                    string endTime = listTask[5][i];
+                    string endTime = listTask[6][i];    //任务倒着插进去
                     for (int j = 0; j < ot.Length; j++)
                     {
                         string item = ot[j];
                         string spendTime = GetPersonTaskTime(listTask[0][i], item);  //从数据库查询花费时间
-                        startTime = j < ot.Length - 1 ? ReduceMinutes(endTime, Convert.ToInt32(spendTime)) : listTask[4][i];   //开始时间判断
-                        string str = String.Format("insert into {0}(PERSON_ID ,TASK_ID,ORDER_NO,SPEND_TIME,START_TIME,END_TIME) values('{1}','{2}','{3}','{4}','{5}','{6}');", tableName, listTask[0][i], item, listTask[2][i], spendTime, startTime, endTime);
-                        SqlCommand mycomm1 = new SqlCommand(str, myconnect);
-                        mycomm1.ExecuteNonQuery();
-                        endTime = startTime;    //上一次的结束时间是本次的开始时间
+                        startTime = ReduceMinutes(endTime, Convert.ToInt32(spendTime));
+
+                        DateTime t1 = Convert.ToDateTime(startTime);
+                        DateTime t2 = Convert.ToDateTime(listTask[5][i]);
+                        int compNum = DateTime.Compare(t1, t2);
+                        //t1 < t2
+                        if (compNum < 0)
+                        {
+                            break;
+                        }
+                        else
+                        {
+                            string str1 = String.Format("insert into {0}(PERSON_ID ,TASK_ID,ORDER_NO,SPEND_TIME,START_TIME,END_TIME) values('{1}','{2}','{3}','{4}','{5}','{6}');", tableName, listTask[0][i], item, listTask[2][i], spendTime, startTime, endTime);
+                            SqlCommand mycomm1 = new SqlCommand(str1, myconnect);
+                            mycomm1.ExecuteNonQuery();
+                            endTime = startTime;    //上一次的结束时间是本次的开始时间
+                            lastTaskId = item;  //最后一次插入的任务，起始时间需要修改
+                        }
+                    }
+
+                    if (lastTaskId != null)
+                    {
+                        //修改最后一个任务的起始时间为任务的迁移时间
+                        string str2 = String.Format("update {0} set START_TIME = '{1}' where PERSON_ID = '{2}' and TASK_ID = '{3}'; ", tableName, listTask[4][i], listTask[0][i], lastTaskId);
+                        SqlCommand mycomm2 = new SqlCommand(str2, myconnect);
+                        mycomm2.ExecuteNonQuery();
                     }
                 }
-                
                 myconnect.Close();
             }
             catch (Exception ex)
@@ -1050,21 +1065,6 @@ namespace GAMSHelper
                 throw ex;
             }
             return spendTime;
-        }
-
-        /// <summary>
-        /// Adds the minutes.
-        /// </summary>
-        /// <param name="t">The t.</param>
-        /// <param name="interval">The interval.</param>
-        /// <returns>System.String.</returns>
-        private string AddMinutes(string t, int interval)
-        {
-            DateTime ts = Convert.ToDateTime(t);
-            DateTime te = ts.AddMinutes(interval);
-            string str_te = te.ToString();
-
-            return str_te;
         }
 
         /// <summary>
